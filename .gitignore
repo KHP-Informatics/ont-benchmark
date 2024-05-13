@@ -1,0 +1,10 @@
+backup/
+basecalled/
+benchmark_data/
+references/
+references_old/
+vcf/
+work/
+qc/*/
+seq_summaries/
+tmp*
