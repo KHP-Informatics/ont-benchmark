@@ -39,7 +39,6 @@ mkdir -p /scratch/prj/ppn_als_longread/benchmark_data/illumina/grch38/
 mkdir -p /scratch/prj/ppn_als_longread/benchmark_data/illumina/picard_liftover/rejected_variants/
 mkdir -p /scratch/prj/ppn_als_longread/benchmark_data/illumina/picard_liftover/logs/
 
-# Process VCF files
 INPUT_DIR="/scratch/prj/ppn_als_longread/benchmark_data/illumina/grch37"
 OUTPUT_DIR="/scratch/prj/ppn_als_longread/benchmark_data/illumina/grch38"
 REJECT_DIR="/scratch/prj/ppn_als_longread/benchmark_data/illumina/picard_liftover/rejected_variants"
@@ -70,5 +69,5 @@ process_vcf() {
 export -f process_vcf
 export OUTPUT_DIR REJECT_DIR REFERENCE CHAIN TMP_DIR LOG_DIR
 
-find ${INPUT_DIR} -name 'LP*-DNA_*.vcf.gz' ! -name '*.genome.vcf.gz' | \
+find ${INPUT_DIR} -name 'LP*-DNA_*.vcf.gz' | \
     xargs -I{} -P 0 srun -n 1 bash -c "process_vcf {}"

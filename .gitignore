@@ -1,10 +1,12 @@
 backup/
+pod5/
 basecalled/
+vcf/
 benchmark_data/
 references/
 references_old/
-vcf/
 work/
+jobs/*/.nextflow*
 qc/*/
 seq_summaries/
 tmp*

@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#SBATCH --job-name=nanoplot
+#SBATCH --job-name=nanoplot_seq_summaries
 #SBATCH --partition=nd_bioinformatics_cpu,cpu
 #SBATCH --ntasks=11
 #SBATCH --cpus-per-task=4
@@ -14,19 +14,29 @@
 export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 
 for summary_file in /scratch/prj/ppn_als_longread/seq_summaries/*/*.txt; do
-    if [ -f "$summary_file" ]; then
-        subdir_name=$(basename "$(dirname "$summary_file")")
+    if [ -f "${summary_file}" ]; then
+        subdir_name=$(basename "$(dirname "${summary_file}")")
         outdir="/scratch/prj/ppn_als_longread/qc/nanoplot/seq_summaries/${subdir_name}"
+
+        # Check if summary file is barcoded
+        if [[ "${subdir_name}" == *"__"* ]]; then
+            barcode_option="--barcoded"
+        else
+            barcode_option=""
+        fi
 
         # docker://staphb/nanoplot:1.42.0
         srun -n1 singularity exec --bind /scratch:/scratch /scratch/users/k2474617/containers/nanoplot_1.42.0.sif NanoPlot \
             --threads 4 \
-            --outdir "$outdir" \
+            ${barcode_option} \
+            --N50 \
+            --loglength \
+            --outdir "${outdir}" \
             --color royalblue \
             --colormap Viridis \
             --plots kde \
             --dpi 300 \
-            --summary "$summary_file" &
+            --summary "${summary_file}" &
     fi
 done
 
