@@ -6,12 +6,12 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=8G
 #SBATCH --time=2-00:00:00
-#SBATCH --output=/scratch/users/%u/slurm_jobs/%j.out
+#SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
 #SBATCH --chdir /scratch/prj/ppn_als_longread/jobs/A046_12_sup
 
-module load nextflow/22.10.1-gcc-13.2.0
+module load nextflow/23.10.0-gcc-13.2.0
 
 # Set the Singularity and Nextflow cache directories
 export NXF_HOME=/scratch/users/${USER}/nextflow/

@@ -6,12 +6,12 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=8G
 #SBATCH --time=2-00:00:00
-#SBATCH --output=/scratch/users/%u/slurm_jobs/%j.out
+#SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
 #SBATCH --chdir /scratch/prj/ppn_als_longread/jobs/A149_01_hac
 
-module load nextflow/22.10.1-gcc-13.2.0
+module load nextflow/23.10.0-gcc-13.2.0
 
 # Set the Singularity and Nextflow cache directories
 export NXF_HOME=/scratch/users/${USER}/nextflow/
@@ -24,11 +24,11 @@ export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 export NFX_OPTS="-Xms512M -Xmx8G"
 
 nextflow run epi2me-labs/wf-human-variation \
-    -r v2.1.0 \
+    -r v2.2.0 \
     -c /scratch/prj/ppn_als_longread/config/wf-human-variation.config \
     --bam /scratch/prj/ppn_als_longread/basecalled/A149_01_hac \
     --out_dir /scratch/prj/ppn_als_longread/vcf/A149_01_hac_ALT \
     --sample_name A149_01_hac_ALT \
-    --sex male \
+    --sex XY \
     --basecaller_cfg dna_r10.4.1_e8.2_400bps_hac@v4.3.0 \
     --ref /scratch/prj/ppn_als_longread/references_old/hg38.fa
