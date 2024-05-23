@@ -2,21 +2,18 @@
 
 #SBATCH --job-name=picard_liftover
 #SBATCH --partition=nd_bioinformatics_cpu,cpu
-#SBATCH --ntasks=12
-#SBATCH --cpus-per-task=2
+#SBATCH --ntasks=42
+#SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=8G
-#SBATCH --time=0-02:00:00
+#SBATCH --time=0-01:00:00
 #SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
 #SBATCH --chdir /scratch/prj/ppn_als_longread/jobs/qc
 
-set -euo pipefail
-
 # Set Singularity cache directory
 export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 
-# Set temporary directory for Picard
 export TMP_DIR=/scratch/prj/ppn_als_longread/benchmark_data/illumina/picard_liftover/work
 
 # Check if dictionary file exists, if not, create it
@@ -29,7 +26,7 @@ if [ ! -f ${REFERENCE_DICT} ]; then
 
     # docker://broadinstitute/picard:3.1.1
     singularity exec --bind /scratch:/scratch /scratch/users/k2474617/containers/picard_3.1.1.sif \
-        java -XX:ParallelGCThreads=2 -jar /usr/picard/picard.jar CreateSequenceDictionary \
+        java -jar /usr/picard/picard.jar CreateSequenceDictionary \
         -REFERENCE ${REFERENCE} \
         -OUTPUT ${REFERENCE_DICT} \
         -TMP_DIR ${TMP_DIR}
@@ -54,8 +51,8 @@ process_vcf() {
     echo "Processing ${input_vcf} and logging to ${log_file}"
 
     # docker://broadinstitute/picard:3.1.1
-    singularity exec --bind /scratch:/scratch /scratch/users/k2474617/containers/picard_3.1.1.sif \
-        java -XX:ParallelGCThreads=2 -jar /usr/picard/picard.jar LiftoverVcf \
+    srun -n1 -N1 singularity exec --bind /scratch:/scratch /scratch/users/k2474617/containers/picard_3.1.1.sif \
+        java -jar /usr/picard/picard.jar LiftoverVcf \
         -INPUT ${input_vcf} \
         -OUTPUT ${output_vcf} \
         -REJECT ${reject_vcf} \
@@ -70,4 +67,4 @@ export -f process_vcf
 export OUTPUT_DIR REJECT_DIR REFERENCE CHAIN TMP_DIR LOG_DIR
 
 find ${INPUT_DIR} -name 'LP*-DNA_*.vcf.gz' | \
-    xargs -I{} -P 0 srun -n 1 bash -c "process_vcf {}"
+    xargs -I{} -P 0 srun -n1 -N1 bash -c "process_vcf {}"
