@@ -24,10 +24,10 @@ export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 export NFX_OPTS="-Xms512M -Xmx8G"
 
 nextflow run epi2me-labs/wf-human-variation \
-    -r v2.2.0 \
+    -r v2.1.0 \
     -c /scratch/prj/ppn_als_longread/config/wf-human-variation.config \
     --bam /scratch/prj/ppn_als_longread/basecalled/A153_01_hac \
     --out_dir /scratch/prj/ppn_als_longread/vcf/A153_01_hac \
     --sample_name A153_01_hac \
-    --sex XY \
+    --sex male \
     --basecaller_cfg dna_r10.4.1_e8.2_400bps_hac@v4.3.0

@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#SBATCH --job-name=A154_04_hac_wf-human-variation
+#SBATCH --job-name=A085_00_sup_wf-human-variation
 #SBATCH --partition=nd_bioinformatics_cpu,cpu
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
@@ -9,7 +9,7 @@
 #SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
-#SBATCH --chdir /scratch/prj/ppn_als_longread/jobs/A154_04_hac
+#SBATCH --chdir /scratch/prj/ppn_als_longread/jobs/A085_00_sup
 
 module load nextflow/23.10.0-gcc-13.2.0
 
@@ -26,8 +26,9 @@ export NFX_OPTS="-Xms512M -Xmx8G"
 nextflow run epi2me-labs/wf-human-variation \
     -r v2.1.0 \
     -c /scratch/prj/ppn_als_longread/config/wf-human-variation.config \
-    --bam /scratch/prj/ppn_als_longread/basecalled/A154_04_hac \
-    --out_dir /scratch/prj/ppn_als_longread/vcf/A154_04_hac \
-    --sample_name A154_04_hac \
-    --sex male \
-    --basecaller_cfg dna_r10.4.1_e8.2_400bps_hac@v4.3.0
+    --bam /scratch/prj/ppn_als_longread/basecalled/A085_00_sup \
+    --out_dir /scratch/prj/ppn_als_longread/vcf/A085_00_sup \
+    --sample_name A085_00_sup \
+    --sex female \
+    --basecaller_cfg dna_r10.4.1_e8.2_400bps_sup@v4.3.0 \
+    --cnv false
