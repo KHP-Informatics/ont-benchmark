@@ -2,7 +2,7 @@
 
 #SBATCH --job-name=variant_benchmark
 #SBATCH --partition=nd_bioinformatics_cpu,cpu,interruptible_cpu
-#SBATCH --ntasks=42
+#SBATCH --ntasks=32
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=2G
 #SBATCH --time=0-01:00:00
@@ -11,170 +11,228 @@
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
 #SBATCH --chdir /scratch/prj/ppn_als_longread/jobs/qc
 
-# Set Singularity cache directory
 export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 
 bcftools_container="/scratch/users/k2474617/containers/bcftools_1.20.sif"
 rtg_tools_container="/scratch/users/k2474617/containers/rtg-tools_3.12.1--hdfd78af_0.sif"
 
 vcf_dir_ont="/scratch/prj/ppn_als_longread/vcf"
-output_dir_ont="/scratch/prj/ppn_als_longread/benchmark_data/ont"
+output_dir_ont="/scratch/prj/ppn_als_longread/benchmark_data/ont/snp_indel"
 vcf_dir_illumina="/scratch/prj/ppn_als_longread/benchmark_data/illumina/grch38"
-output_dir_illumina="/scratch/prj/ppn_als_longread/benchmark_data/illumina/filtered"
+output_dir_illumina="/scratch/prj/ppn_als_longread/benchmark_data/illumina/snp_indel"
 reference_fasta="/scratch/prj/ppn_als_longread/references/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
 reference_base=$(basename ${reference_fasta} .fna)
 reference_sdf="/scratch/prj/ppn_als_longread/references/${reference_base}.sdf"
 sample_id_file="/scratch/prj/ppn_als_longread/sample_ids.csv"
 eval_output_base_dir="/scratch/prj/ppn_als_longread/qc/variant_benchmark"
 roc_output_base_dir="/scratch/prj/ppn_als_longread/qc/roc_plots"
+sv_output_dir_ont="/scratch/prj/ppn_als_longread/benchmark_data/ont/sv"
+sv_output_dir_illumina="/scratch/prj/ppn_als_longread/benchmark_data/illumina/sv"
 
-# Check and create SDF
-if [ ! -d "${reference_sdf}" ]; then
-    echo "Reference SDF not found. Creating SDF..."
-    srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg format -o ${reference_sdf} ${reference_fasta}
-else
-    echo "Reference SDF already exists."
-fi
-
-# Create output directories
-mkdir -p ${output_dir_ont}
-mkdir -p ${output_dir_illumina}
-mkdir -p ${eval_output_base_dir}
-mkdir -p ${roc_output_base_dir}
-
-# Read sample IDs mapping
-declare -A sample_id_map
-while IFS=',' read -r ont_id illumina_id; do
-    ont_id=$(echo $ont_id | sed 's/_hac$//;s/_sup$//' | tr -d '[:space:]')
-    illumina_id=$(echo $illumina_id | tr -d '[:space:]')
-    sample_id_map[$ont_id]=$illumina_id
-done < <(tail -n +2 ${sample_id_file})
-
-# Process ONT VCF files
-for vcf_file in ${vcf_dir_ont}/*/*.wf_snp.vcf.gz; do
-    sample_id=$(basename $(dirname ${vcf_file}))
-    ont_id=$(echo ${sample_id} | sed 's/_hac$//;s/_sup$//' | tr -d '[:space:]')
-    illumina_id=${sample_id_map[${ont_id}]}
-
-    if [[ -z "${illumina_id}" ]]; then
-        echo "No matching Illumina sample ID found for ONT sample ID ${ont_id}"
-        continue
+create_sdf_if_missing() {
+    if [ ! -d "${reference_sdf}" ]; then
+        echo "Reference SDF not found. Creating SDF..."
+        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg format -o ${reference_sdf} ${reference_fasta}
+    else
+        echo "Reference SDF already exists."
     fi
+}
 
-    output_snps="${output_dir_ont}/${sample_id}_snps.vcf.gz"
-    output_indels="${output_dir_ont}/${sample_id}_indels.vcf.gz"
+create_directories() {
+    mkdir -p ${output_dir_ont}
+    mkdir -p ${output_dir_illumina}
+    mkdir -p ${eval_output_base_dir}
+    mkdir -p ${roc_output_base_dir}
+    mkdir -p ${sv_output_dir_ont}
+    mkdir -p ${sv_output_dir_illumina}
+}
 
-    echo "Processing ONT VCF for sample ID: ${sample_id}"
-    srun -n1 -N1 singularity exec --bind /scratch:/scratch ${bcftools_container} bash -c "
-        bcftools view -v snps,mnps ${vcf_file} -Oz -o ${output_snps}
-        bcftools index -t -f ${output_snps}
-        bcftools view -v indels ${vcf_file} -Oz -o ${output_indels}
-        bcftools index -t -f ${output_indels}
-    " &
-done
+declare -A sample_id_map
+read_sample_id_mapping() {
+    while IFS=',' read -r ont_id illumina_id; do
+        ont_id=$(echo $ont_id | sed 's/_hac$//;s/_sup$//' | tr -d '[:space:]')
+        illumina_id=$(echo $illumina_id | tr -d '[:space:]')
+        if [[ -n "${ont_id}" && -n "${illumina_id}" ]]; then
+            sample_id_map[$ont_id]=$illumina_id
+        fi
+    done < <(tail -n +2 ${sample_id_file})
+}
 
-# Process Illumina VCF files
-for vcf_file in ${vcf_dir_illumina}/*.vcf.gz; do
-    base_name=$(basename ${vcf_file})
-    if [[ ${base_name} != *.SV.vcf.gz && ${base_name} != *.genome.vcf.gz ]]; then
-        sample_id="${base_name%.vcf.gz}"
-        output_snps="${output_dir_illumina}/${sample_id}_snps.vcf.gz"
-        output_indels="${output_dir_illumina}/${sample_id}_indels.vcf.gz"
+process_ont_vcf_files() {
+    local vcf_dir=$1
+    local output_dir=$2
+    local filter_expression=""
 
-        echo "Processing Illumina VCF for sample ID: ${sample_id}"
+    shopt -s nullglob
+    for vcf_file in "${vcf_dir}"/*/*.wf_snp.vcf.gz; do
+        sample_id=$(basename "$(dirname "${vcf_file}")")
+        echo "Processing ONT VCF file: ${vcf_file}, Sample ID: ${sample_id}"
+        ont_id=$(echo "${sample_id}" | sed 's/_hac$//;s/_sup$//' | tr -d '[:space:]')
+        illumina_id="${sample_id_map[${ont_id}]}"
+        echo "ONT ID: ${ont_id}, Illumina ID: ${illumina_id}"
+
+        if [[ -z "${illumina_id}" ]]; then
+            echo "No matching Illumina sample ID found for ONT sample ID ${ont_id}"
+            continue
+        fi
+
+        output_snps="${output_dir}/${sample_id}_snps.vcf.gz"
+        output_indels="${output_dir}/${sample_id}_indels.vcf.gz"
+
+        echo "Processing ONT VCF for sample ID: ${sample_id}"
         srun -n1 -N1 singularity exec --bind /scratch:/scratch ${bcftools_container} bash -c "
-            bcftools view -v snps,mnps ${vcf_file} -Oz -o ${output_snps}
+            bcftools view -v snps,mnps ${vcf_file} ${filter_expression} -Oz -o ${output_snps}
             bcftools index -t -f ${output_snps}
-            bcftools view -v indels -i 'QUAL>=30' ${vcf_file} -Oz -o ${output_indels}
+            bcftools view -v indels ${vcf_file} ${filter_expression} -Oz -o ${output_indels}
             bcftools index -t -f ${output_indels}
         " &
-    fi
-done
 
-wait
+    done
+    shopt -u nullglob
+}
 
-# Prepare lists for ROC plots
-hac_snps_rocs=()
-sup_snps_rocs=()
-hac_indels_rocs=()
-sup_indels_rocs=()
+process_illumina_vcf_files() {
+    local vcf_dir=$1
+    local output_dir=$2
+    local filter_expression="-i 'QUAL>=30'"
 
-# Perform variant benchmarking with rtg vcfeval
-for ont_snps in ${output_dir_ont}/*_snps.vcf.gz; do
-    sample_id=$(basename ${ont_snps} _snps.vcf.gz)
-    ont_id=$(echo ${sample_id} | sed 's/_hac$//;s/_sup$//' | tr -d '[:space:]')
-    illumina_id=${sample_id_map[${ont_id}]}
+    shopt -s nullglob
+    for vcf_file in "${vcf_dir}"/*.vcf.gz; do
+        sample_id=$(basename "${vcf_file}" .vcf.gz)
 
-    if [[ -z "${illumina_id}" ]]; then
-        echo "No matching Illumina sample ID found for ONT sample ID ${ont_id}"
-        continue
-    fi
+        if [[ "${vcf_file}" == *".SV.vcf.gz" || "${vcf_file}" == *".genome.vcf.gz" ]]; then
+            continue
+        fi
 
-    illumina_snps="${output_dir_illumina}/${illumina_id}_snps.vcf.gz"
-    eval_output_dir_snps="${eval_output_base_dir}/${sample_id}_snps"
+        echo "Processing Illumina VCF file: ${vcf_file}, Sample ID: ${sample_id}"
 
-    if [ ! -f "${illumina_snps}" ]; then
-        echo "The baseline file ${illumina_snps} does not exist."
-        continue
-    fi
+        output_snps="${output_dir}/${sample_id}_snps.vcf.gz"
+        output_indels="${output_dir}/${sample_id}_indels.vcf.gz"
 
-    echo "Running rtg vcfeval for sample ID: ${sample_id} (SNPs)"
-    srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg vcfeval \
-        --baseline=${illumina_snps} \
-        --calls=${ont_snps} \
-        --template=${reference_sdf} \
-        --output=${eval_output_dir_snps} \
-        --output-mode=roc-only &
+        echo "Filtering Illumina VCF for sample ID: ${sample_id}"
+        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${bcftools_container} bash -c "
+            bcftools view -v snps,mnps ${vcf_file} ${filter_expression} -Oz -o ${output_snps}
+            bcftools index -t -f ${output_snps}
+            bcftools view -v indels ${vcf_file} ${filter_expression} -Oz -o ${output_indels}
+            bcftools index -t -f ${output_indels}
+        " &
 
-    if [[ ${sample_id} == *_hac ]]; then
-        hac_snps_rocs+=("${eval_output_dir_snps}/snp_roc.tsv")
-    elif [[ ${sample_id} == *_sup ]]; then
-        sup_snps_rocs+=("${eval_output_dir_snps}/snp_roc.tsv")
-    fi
-done
+    done
+    shopt -u nullglob
+}
 
-for ont_indels in ${output_dir_ont}/*_indels.vcf.gz; do
-    sample_id=$(basename ${ont_indels} _indels.vcf.gz)
-    ont_id=$(echo ${sample_id} | sed 's/_hac$//;s/_sup$//' | tr -d '[:space:]')
-    illumina_id=${sample_id_map[${ont_id}]}
+process_sv_files() {
+    local vcf_dir=$1
+    local output_dir=$2
 
-    if [[ -z "${illumina_id}" ]]; then
-        echo "No matching Illumina sample ID found for ONT sample ID ${ont_id}"
-        continue
-    fi
+    shopt -s nullglob
+    for vcf_file in "${vcf_dir}"/*/*.wf_sv.vcf.gz; do
+        sample_id=$(basename "$(dirname "${vcf_file}")")
+        echo "Processing SV file: ${vcf_file}, Sample ID: ${sample_id}"
 
-    illumina_indels="${output_dir_illumina}/${illumina_id}_indels.vcf.gz"
-    eval_output_dir_indels="${eval_output_base_dir}/${sample_id}_indels"
+        output_sv="${output_dir}/${sample_id}_decomposed_sv.vcf.gz"
 
-    if [ ! -f "${illumina_indels}" ]; then
-        echo "The baseline file ${illumina_indels} does not exist."
-        continue
-    fi
+        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg svdecompose \
+            --input=${vcf_file} --output=${output_sv} &
+    done
 
-    echo "Running rtg vcfeval for sample ID: ${sample_id} (Indels)"
-    srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg vcfeval \
-        --baseline=${illumina_indels} \
-        --calls=${ont_indels} \
-        --template=${reference_sdf} \
-        --output=${eval_output_dir_indels} \
-        --output-mode=roc-only &
+    for vcf_file in "${vcf_dir}"/*.SV.vcf.gz; do
+        sample_id=$(basename "${vcf_file}" .SV.vcf.gz)
+        echo "Processing SV file: ${vcf_file}, Sample ID: ${sample_id}"
 
-    if [[ ${sample_id} == *_hac ]]; then
-        hac_indels_rocs+=("${eval_output_dir_indels}/non_snp_roc.tsv")
-    elif [[ ${sample_id} == *_sup ]]; then
-        sup_indels_rocs+=("${eval_output_dir_indels}/non_snp_roc.tsv")
-    fi
-done
+        output_sv="${output_dir}/${sample_id}_decomposed_sv.vcf.gz"
 
-wait
+        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg svdecompose \
+            --input=${vcf_file} --output=${output_sv} &
+    done
+    shopt -u nullglob
+}
 
-# Generate ROC plots with rtg rocplot
+benchmark_variants() {
+    local input_dir=$1
+    local baseline_dir=$2
+    local eval_output_suffix=$3
+    local roc_suffix=$4
+    local roc_array_name=$5
+
+    for input_vcf in ${input_dir}/*_${eval_output_suffix}.vcf.gz; do
+        sample_id=$(basename ${input_vcf} _${eval_output_suffix}.vcf.gz)
+        ont_id=$(echo ${sample_id} | sed 's/_hac$//;s/_sup$//' | tr -d '[:space:]')
+        illumina_id=${sample_id_map[${ont_id}]}
+
+        if [[ -z "${illumina_id}" ]]; then
+            echo "No matching Illumina sample ID found for ONT sample ID ${ont_id}"
+            continue
+        fi
+
+        illumina_suffix=$(echo ${eval_output_suffix} | sed 's/^.*_//')
+
+        baseline_vcf="${baseline_dir}/${illumina_id}_${illumina_suffix}.vcf.gz"
+        eval_output_dir="${eval_output_base_dir}/${sample_id}_${eval_output_suffix}"
+
+        if [ ! -f "${baseline_vcf}" ]; then
+            echo "The baseline file ${baseline_vcf} does not exist."
+            continue
+        fi
+
+        echo "Running rtg vcfeval for sample ID: ${sample_id} (${eval_output_suffix})"
+        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg vcfeval \
+            --baseline=${baseline_vcf} \
+            --calls=${input_vcf} \
+            --template=${reference_sdf} \
+            --output=${eval_output_dir} \
+            --output-mode=roc-only &
+
+        if [[ ${eval_output_suffix} == hac* ]]; then
+            eval "${roc_array_name}+=(\"${eval_output_dir}/${roc_suffix}\")"
+        elif [[ ${eval_output_suffix} == sup* ]]; then
+            eval "${roc_array_name}+=(\"${eval_output_dir}/${roc_suffix}\")"
+        fi
+    done
+}
+
+benchmark_sv() {
+    local input_dir=$1
+    local baseline_dir=$2
+    local eval_output_suffix=$3
+    local roc_suffix=$4
+    local roc_array_name=$5
+
+    for input_vcf in ${input_dir}/*_${eval_output_suffix}.vcf.gz; do
+        sample_id=$(basename ${input_vcf} _${eval_output_suffix}.vcf.gz)
+        ont_id=$(echo ${sample_id} | sed 's/_hac$//;s/_sup$//' | tr -d '[:space:]')
+        illumina_id=${sample_id_map[${ont_id}]}
+
+        if [[ -z "${illumina_id}" ]]; then
+            echo "No matching Illumina sample ID found for ONT sample ID ${ont_id}"
+            continue
+        fi
+
+        baseline_vcf="${baseline_dir}/${illumina_id}_decomposed_sv.vcf.gz"
+        eval_output_dir="${eval_output_base_dir}/${sample_id}_${eval_output_suffix}"
+
+        if [ ! -f "${baseline_vcf}" ]; then
+            echo "The baseline file ${baseline_vcf} does not exist."
+            continue
+        fi
+
+        echo "Running rtg bndeval for sample ID: ${sample_id} (${eval_output_suffix})"
+        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg bndeval \
+            --baseline=${baseline_vcf} \
+            --calls=${input_vcf} \
+            --output=${eval_output_dir} \
+            --output-mode=annotate &
+
+        eval "${roc_array_name}+=(\"${eval_output_dir}/${roc_suffix}\")"
+    done
+}
+
+
 generate_rocplot() {
     local input_files=("$@")
     local output_file="${input_files[-1]}"
     unset 'input_files[-1]'
 
-    # Filter out non-existent .tsv.gz files
     local valid_input_files=()
     for file in "${input_files[@]}"; do
         if [ -f "${file}.gz" ]; then
@@ -184,38 +242,60 @@ generate_rocplot() {
         fi
     done
 
-    # Only run the plot if there are valid input files
     if [ ${#valid_input_files[@]} -gt 0 ]; then
         echo "Generating ROC plot: ${output_file}"
         srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg rocplot \
             --png=${output_file} \
             --plain \
             --palette=classic \
-            ${valid_input_files[@]} &
+            "${valid_input_files[@]}" &
     else
         echo "No valid input files for ROC plot: ${output_file}. Skipping."
     fi
 }
 
+main() {
+    create_sdf_if_missing
+    create_directories
+    read_sample_id_mapping
 
-# 1. All hac and sup snps
-generate_rocplot "${hac_snps_rocs[@]}" "${sup_snps_rocs[@]}" "${roc_output_base_dir}/all_hac_sup_snps.png"
+    process_ont_vcf_files "${vcf_dir_ont}" "${output_dir_ont}"
+    process_illumina_vcf_files "${vcf_dir_illumina}" "${output_dir_illumina}"
+    process_sv_files "${vcf_dir_ont}" "${sv_output_dir_ont}"
+    process_sv_files "${vcf_dir_illumina}" "${sv_output_dir_illumina}"
 
-# 2. All hac and sup indels
-generate_rocplot "${hac_indels_rocs[@]}" "${sup_indels_rocs[@]}" "${roc_output_base_dir}/all_hac_sup_indels.png"
+    wait
 
-# 3. Only hac snps
-generate_rocplot "${hac_snps_rocs[@]}" "${roc_output_base_dir}/hac_snps.png"
+    declare -a hac_snps_rocs
+    declare -a sup_snps_rocs
+    declare -a hac_indels_rocs
+    declare -a sup_indels_rocs
+    declare -a hac_sv_rocs
+    declare -a sup_sv_rocs
 
-# 4. Only hac indels
-generate_rocplot "${hac_indels_rocs[@]}" "${roc_output_base_dir}/hac_indels.png"
+    benchmark_variants ${output_dir_ont} ${output_dir_illumina} "hac_snps" "snp_roc.tsv" "hac_snps_rocs"
+    benchmark_variants ${output_dir_ont} ${output_dir_illumina} "sup_snps" "snp_roc.tsv" "sup_snps_rocs"
+    benchmark_variants ${output_dir_ont} ${output_dir_illumina} "hac_indels" "non_snp_roc.tsv" "hac_indels_rocs"
+    benchmark_variants ${output_dir_ont} ${output_dir_illumina} "sup_indels" "non_snp_roc.tsv" "sup_indels_rocs"
 
-# 5. Only sup snps
-generate_rocplot "${sup_snps_rocs[@]}" "${roc_output_base_dir}/sup_snps.png"
+    benchmark_sv ${sv_output_dir_ont} ${sv_output_dir_illumina} "hac_decomposed_sv" "weighted_roc.tsv" "hac_sv_rocs"
+    benchmark_sv ${sv_output_dir_ont} ${sv_output_dir_illumina} "sup_decomposed_sv" "weighted_roc.tsv" "sup_sv_rocs"
 
-# 6. Only sup indels
-generate_rocplot "${sup_indels_rocs[@]}" "${roc_output_base_dir}/sup_indels.png"
+    wait
 
-wait
+    generate_rocplot "${hac_snps_rocs[@]}" "${sup_snps_rocs[@]}" "${roc_output_base_dir}/all_hac_sup_snps.png"
+    generate_rocplot "${hac_indels_rocs[@]}" "${sup_indels_rocs[@]}" "${roc_output_base_dir}/all_hac_sup_indels.png"
+    generate_rocplot "${hac_snps_rocs[@]}" "${roc_output_base_dir}/hac_snps.png"
+    generate_rocplot "${hac_indels_rocs[@]}" "${roc_output_base_dir}/hac_indels.png"
+    generate_rocplot "${sup_snps_rocs[@]}" "${roc_output_base_dir}/sup_snps.png"
+    generate_rocplot "${sup_indels_rocs[@]}" "${roc_output_base_dir}/sup_indels.png"
+    generate_rocplot "${hac_sv_rocs[@]}" "${sup_sv_rocs[@]}" "${roc_output_base_dir}/all_hac_sup_sv.png"
+    generate_rocplot "${hac_sv_rocs[@]}" "${roc_output_base_dir}/hac_sv.png"
+    generate_rocplot "${sup_sv_rocs[@]}" "${roc_output_base_dir}/sup_sv.png"
 
-echo "All tasks completed."
+    wait
+
+    echo "All tasks completed."
+}
+
+main
