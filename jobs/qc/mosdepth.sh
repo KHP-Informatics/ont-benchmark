@@ -5,7 +5,7 @@
 #SBATCH --ntasks=28
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=1G
-#SBATCH --time=0-00:20:00
+#SBATCH --time=0-00:10:00
 #SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
@@ -33,8 +33,6 @@ for input_cram in ${INPUT_DIR}*.haplotagged.cram; do
         cd ${output_dir} && \
         mosdepth \
             --threads 4 \
-            --no-per-base \
-            --by 1000 \
             --fasta ${REFERENCE} \
             --fast-mode \
             $(basename ${prefix}) \

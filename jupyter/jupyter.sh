@@ -3,7 +3,7 @@
 #SBATCH --job-name=ops-jupyter
 #SBATCH --partition=nd_bioinformatics_cpu,cpu
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
 #SBATCH --time=1-00:00:00
 #SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
