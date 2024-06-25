@@ -8,9 +8,11 @@ Channel
         def ont_id = row.ont_id.trim()
         def LP_id = row.LP_id.trim()
         def microarray_vcf = file("${params.microarray_dir}/FinalReport_InfiniumOmni2-5-8v1-4_${LP_id}.vcf.gz")
+        def microarray_index = file("${params.microarray_dir}/FinalReport_InfiniumOmni2-5-8v1-4_${LP_id}.vcf.gz.tbi")
         def ont_vcf = file("${params.ont_dir}/${ont_id}_sup/${ont_id}_sup.wf_snp.vcf.gz")
-        if (microarray_vcf.exists() && ont_vcf.exists()) {
-            return tuple(ont_id, LP_id, microarray_vcf, ont_vcf)
+        def ont_index = file("${params.ont_dir}/${ont_id}_sup/${ont_id}_sup.wf_snp.vcf.gz.tbi")
+        if (microarray_vcf.exists() && microarray_index.exists() && ont_vcf.exists() && ont_index.exists()) {
+            return tuple(ont_id, LP_id, microarray_vcf, microarray_index, ont_vcf, ont_index)
         } else {
             return null
         }
@@ -19,8 +21,13 @@ Channel
     .set { input_files_ch }
 
 input_files_ch
-    .map { it[2] }
+    .map { it[2..3] }
     .collect()
+    .map { vcfs ->
+        def vcf_files = vcfs.findAll { it.name.endsWith('.vcf.gz') }
+        def index_files = vcfs.findAll { it.name.endsWith('.vcf.gz.tbi') }
+        return tuple(vcf_files, index_files)
+    }
     .set { microarray_vcfs_ch }
 
 Channel
@@ -53,7 +60,7 @@ process CREATE_SDF {
 process FETCH_ARRAY_POSITIONS {
     input:
     path array_positions_file
-    path microarray_vcfs
+    tuple path(microarray_vcfs), path(microarray_indexes)
 
     output:
     path "array_positions.json", emit: array_positions_json
@@ -114,16 +121,31 @@ process FETCH_ARRAY_POSITIONS {
                 array_positions[name] = rsid
     logging.info(f"Read {len(array_positions)} entries from array positions file")
 
-    all_rsids = set()
-    vcf_files = Path("microarray_vcfs").glob("*.vcf.gz")
-    for vcf_file in vcf_files:
+    def process_vcf_file(vcf_file):
+        rsids = set()
         logging.info(f"Processing VCF file: {vcf_file}")
-        with pysam.VariantFile(str(vcf_file)) as vcf:
-            for record in vcf:
-                variant_id = record.id
-                rsid = array_positions.get(variant_id, variant_id)
-                if rsid.startswith("rs"):
-                    all_rsids.add(rsid)
+        try:
+            with pysam.VariantFile(str(vcf_file)) as vcf:
+                record_count = 0
+                for record in vcf:
+                    record_count += 1
+                    variant_id = record.id
+                    rsid = array_positions.get(variant_id, variant_id)
+                    if rsid.startswith("rs"):
+                        rsids.add(rsid)
+                logging.info(f"Processed {record_count} records in {vcf_file}")
+        except Exception as e:
+            logging.error(f"Error processing {vcf_file}: {str(e)}")
+        return rsids
+
+    vcf_files = "${microarray_vcfs}".split()
+    logging.info(f"Found {len(vcf_files)} VCF files")
+
+    all_rsids = set()
+    for vcf_file in vcf_files:
+        file_rsids = process_vcf_file(vcf_file)
+        all_rsids.update(file_rsids)
+
     logging.info(f"Collected {len(all_rsids)} unique rsIDs from all VCF files")
 
     positions_cache = fetch_rsid_positions(all_rsids)
