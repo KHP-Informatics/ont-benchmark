@@ -4,14 +4,22 @@ on:
   push:
     branches: ["main"]
     tags: ["v*.*.*"]
-    paths: ["pysam_requests.Dockerfile"]
+    paths:
+      [
+        "pysam_requests.Dockerfile",
+        ".github/workflows/pysam_requests_container_publish.yml",
+      ]
   pull_request:
     branches: ["main"]
-    paths: ["pysam_requests.Dockerfile"]
+    paths:
+      [
+        "pysam_requests.Dockerfile",
+        ".github/workflows/pysam_requests_container_publish.yml",
+      ]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: pysam-requests
+  IMAGE_NAME: renatosantos98/pysam-requests
 
 jobs:
   build:
