@@ -11,7 +11,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: pysam-requests
 
 jobs:
   build:
@@ -48,11 +48,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}}
             type=sha,prefix=commit-
-            type=ref,event=branch,prefix=branch-,strip-prefix=true
-            type=ref,event=pr,prefix=pr-
-            type=ref,event=tag,prefix=version-,strip-prefix=true
           flavor: |
             latest=${{ github.ref == 'refs/heads/main' }}
 
