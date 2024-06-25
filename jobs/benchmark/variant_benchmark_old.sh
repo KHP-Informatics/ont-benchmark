@@ -15,6 +15,7 @@ export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 
 bcftools_container="/scratch/users/k2474617/containers/bcftools_1.20.sif"
 rtg_tools_container="/scratch/users/k2474617/containers/rtg-tools_3.12.1--hdfd78af_0.sif"
+survivor_container="/scratch/users/k2474617/containers/survivor_1.0.7--hdcf5f25_4.sif"
 
 vcf_dir_ont="/scratch/prj/ppn_als_longread/vcf"
 output_dir_ont="/scratch/prj/ppn_als_longread/benchmark_data/ont/snp_indel"
@@ -121,33 +122,6 @@ process_illumina_vcf_files() {
     shopt -u nullglob
 }
 
-process_sv_files() {
-    local vcf_dir=$1
-    local output_dir=$2
-
-    shopt -s nullglob
-    for vcf_file in "${vcf_dir}"/*/*.wf_sv.vcf.gz; do
-        sample_id=$(basename "$(dirname "${vcf_file}")")
-        echo "Processing SV file: ${vcf_file}, Sample ID: ${sample_id}"
-
-        output_sv="${output_dir}/${sample_id}_decomposed_sv.vcf.gz"
-
-        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg svdecompose \
-            --input=${vcf_file} --output=${output_sv} &
-    done
-
-    for vcf_file in "${vcf_dir}"/*.SV.vcf.gz; do
-        sample_id=$(basename "${vcf_file}" .SV.vcf.gz)
-        echo "Processing SV file: ${vcf_file}, Sample ID: ${sample_id}"
-
-        output_sv="${output_dir}/${sample_id}_decomposed_sv.vcf.gz"
-
-        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg svdecompose \
-            --input=${vcf_file} --output=${output_sv} &
-    done
-    shopt -u nullglob
-}
-
 benchmark_variants() {
     local input_dir=$1
     local baseline_dir=$2
@@ -191,15 +165,53 @@ benchmark_variants() {
     done
 }
 
-benchmark_sv() {
-    local input_dir=$1
-    local baseline_dir=$2
-    local eval_output_suffix=$3
-    local roc_suffix=$4
-    local roc_array_name=$5
+process_sv_files() {
+    local vcf_dir=$1
+    local output_dir=$2
 
-    for input_vcf in ${input_dir}/*_${eval_output_suffix}.vcf.gz; do
-        sample_id=$(basename ${input_vcf} _${eval_output_suffix}.vcf.gz)
+    shopt -s nullglob
+    for sv_file in "${vcf_dir}"/*/*.wf_sv.vcf.gz; do
+        str_file=$(echo "${sv_file}" | sed 's/.wf_sv.vcf.gz/.wf_str.vcf.gz/')
+        sample_id=$(basename "$(dirname "${sv_file}")")
+        merged_sv_str_file="${output_dir}/${sample_id}_merged_sv_str.vcf.gz"
+
+        if [ -f "${str_file}" ]; then
+            echo "Merging SV and STR files for sample ID: ${sample_id}"
+            srun -n1 -N1 singularity exec --bind /scratch:/scratch ${bcftools_container} bash -c "
+                bcftools concat -a -Oz -o ${merged_sv_str_file} ${sv_file} ${str_file}
+                bcftools index -t -f ${merged_sv_str_file}
+            " &
+        else
+            echo "STR file not found for sample ID: ${sample_id}, using only SV file."
+            cp ${sv_file} ${merged_sv_str_file}
+            srun -n1 -N1 singularity exec --bind /scratch:/scratch ${bcftools_container} bash -c "
+                bcftools index -t -f ${merged_sv_str_file}
+            " &
+        fi
+    done
+
+    for vcf_file in "${vcf_dir}"/*.SV.vcf.gz; do
+        sample_id=$(basename "${vcf_file}" .SV.vcf.gz)
+        echo "Processing Illumina SV file: ${vcf_file}, Sample ID: ${sample_id}"
+
+        output_sv="${output_dir}/${sample_id}_sv.vcf.gz"
+
+        cp ${vcf_file} ${output_sv}
+        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${bcftools_container} bash -c "
+            bcftools index -t -f ${output_sv}
+        " &
+    done
+    shopt -u nullglob
+}
+
+merge_sv_files_with_survivor() {
+    local ont_sv_dir=$1
+    local illumina_sv_dir=$2
+
+    shopt -s nullglob
+
+    for ont_sv_file in ${ont_sv_dir}/*_merged_sv_str.vcf.gz; do
+        sample_id=$(basename ${ont_sv_file} _merged_sv_str.vcf.gz)
         ont_id=$(echo ${sample_id} | sed 's/_hac$//;s/_sup$//' | tr -d '[:space:]')
         illumina_id=${sample_id_map[${ont_id}]}
 
@@ -208,25 +220,25 @@ benchmark_sv() {
             continue
         fi
 
-        baseline_vcf="${baseline_dir}/${illumina_id}_decomposed_sv.vcf.gz"
-        eval_output_dir="${eval_output_base_dir}/${sample_id}_${eval_output_suffix}"
+        illumina_sv_file="${illumina_sv_dir}/${illumina_id}_sv.vcf.gz"
 
-        if [ ! -f "${baseline_vcf}" ]; then
-            echo "The baseline file ${baseline_vcf} does not exist."
+        if [ ! -f "${illumina_sv_file}" ]; then
+            echo "The Illumina SV file ${illumina_sv_file} does not exist."
             continue
         fi
 
-        echo "Running rtg bndeval for sample ID: ${sample_id} (${eval_output_suffix})"
-        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${rtg_tools_container} rtg bndeval \
-            --baseline=${baseline_vcf} \
-            --calls=${input_vcf} \
-            --output=${eval_output_dir} \
-            --output-mode=annotate &
+        sample_files_list="${eval_output_base_dir}/${sample_id}_sample_files.txt"
+        merged_sv_file="${eval_output_base_dir}/${sample_id}_merged_sv.vcf"
 
-        eval "${roc_array_name}+=(\"${eval_output_dir}/${roc_suffix}\")"
+        echo -e "${ont_sv_file}\n${illumina_sv_file}" > ${sample_files_list}
+
+        echo "Merging ONT and Illumina SV files for sample ID: ${sample_id}"
+        srun -n1 -N1 singularity exec --bind /scratch:/scratch ${survivor_container} bash -c "
+            SURVIVOR merge ${sample_files_list} 1000 2 1 1 0 30 ${merged_sv_file}
+        " &
     done
+    shopt -u nullglob
 }
-
 
 generate_rocplot() {
     local input_files=("$@")
@@ -270,16 +282,15 @@ main() {
     declare -a sup_snps_rocs
     declare -a hac_indels_rocs
     declare -a sup_indels_rocs
-    declare -a hac_sv_rocs
-    declare -a sup_sv_rocs
 
     benchmark_variants ${output_dir_ont} ${output_dir_illumina} "hac_snps" "snp_roc.tsv" "hac_snps_rocs"
     benchmark_variants ${output_dir_ont} ${output_dir_illumina} "sup_snps" "snp_roc.tsv" "sup_snps_rocs"
     benchmark_variants ${output_dir_ont} ${output_dir_illumina} "hac_indels" "non_snp_roc.tsv" "hac_indels_rocs"
     benchmark_variants ${output_dir_ont} ${output_dir_illumina} "sup_indels" "non_snp_roc.tsv" "sup_indels_rocs"
 
-    benchmark_sv ${sv_output_dir_ont} ${sv_output_dir_illumina} "hac_decomposed_sv" "weighted_roc.tsv" "hac_sv_rocs"
-    benchmark_sv ${sv_output_dir_ont} ${sv_output_dir_illumina} "sup_decomposed_sv" "weighted_roc.tsv" "sup_sv_rocs"
+    wait
+
+    merge_sv_files_with_survivor ${sv_output_dir_ont} ${sv_output_dir_illumina}
 
     wait
 
@@ -289,9 +300,6 @@ main() {
     generate_rocplot "${hac_indels_rocs[@]}" "${roc_output_base_dir}/hac_indels.png"
     generate_rocplot "${sup_snps_rocs[@]}" "${roc_output_base_dir}/sup_snps.png"
     generate_rocplot "${sup_indels_rocs[@]}" "${roc_output_base_dir}/sup_indels.png"
-    generate_rocplot "${hac_sv_rocs[@]}" "${sup_sv_rocs[@]}" "${roc_output_base_dir}/all_hac_sup_sv.png"
-    generate_rocplot "${hac_sv_rocs[@]}" "${roc_output_base_dir}/hac_sv.png"
-    generate_rocplot "${sup_sv_rocs[@]}" "${roc_output_base_dir}/sup_sv.png"
 
     wait
 
