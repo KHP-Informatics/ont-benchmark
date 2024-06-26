@@ -1,4 +1,4 @@
-name: pysam Docker Image CI for GHCR
+name: pysam_biopython Docker Image CI for ont-benchmark
 
 on:
   push:
@@ -6,20 +6,20 @@ on:
     tags: ["v*.*.*"]
     paths:
       [
-        "pysam_requests.Dockerfile",
-        ".github/workflows/pysam_requests_container_publish.yml",
+        "pysam_biopython.Dockerfile",
+        ".github/workflows/pysam_biopython_container_publish.yml",
       ]
   pull_request:
     branches: ["main"]
     paths:
       [
-        "pysam_requests.Dockerfile",
-        ".github/workflows/pysam_requests_container_publish.yml",
+        "pysam_biopython.Dockerfile",
+        ".github/workflows/pysam_biopython_container_publish.yml",
       ]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: renatosantos98/pysam-requests
+  IMAGE_NAME: renatosantos98/pysam-biopython
 
 jobs:
   build:
@@ -56,7 +56,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=sha,prefix=commit-
+            type=sha,format=long
           flavor: |
             latest=${{ github.ref == 'refs/heads/main' }}
 
@@ -65,7 +65,7 @@ jobs:
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09
         with:
           context: .
-          file: ./pysam_requests.Dockerfile
+          file: ./pysam_biopython.Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
