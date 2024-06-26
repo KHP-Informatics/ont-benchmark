@@ -62,7 +62,7 @@ jobs:
         with:
           context: .
           file: ./pysam_biopython.Dockerfile
-          push: false # Do not push the image yet
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -76,7 +76,7 @@ jobs:
         if: ${{ github.event_name != 'pull_request' }}
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
-          DIGEST: ${{ env.DIGEST }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
 
       - name: Push signed Docker image
