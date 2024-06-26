@@ -185,8 +185,8 @@ workflow {
 )
 
     FETCH_ARRAY_POSITIONS(
-        array_positions_file,
-        microarray_vcfs_and_indexes,
+        array_positions_ch,
+        microarray_vcfs_ch,
         params.dbsnp_build
 )
 }
