@@ -56,9 +56,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=sha,format=long
-          flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            type=sha
 
       - name: Build and push Docker image
         id: build-and-push
