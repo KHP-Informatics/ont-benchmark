@@ -5,7 +5,7 @@ process GENERATE_SDF_REFERENCE {
     path reference_fasta
 
     output:
-    path "${reference_base}.sdf", emit: reference_sdf
+    path "${reference_base}.sdf", type: 'dir', emit: reference_sdf
 
     script:
     reference_base = reference_fasta.baseName
