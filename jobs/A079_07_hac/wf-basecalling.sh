@@ -4,7 +4,7 @@
 #SBATCH --partition=nd_bioinformatics_cpu,cpu
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=8G
+#SBATCH --mem=4G
 #SBATCH --time=2-00:00:00
 #SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
 #SBATCH --mail-type=ALL
@@ -21,7 +21,7 @@ export NXF_SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 
 # Specify Nextflow max heap size
-export NFX_OPTS="-Xms512M -Xmx8G"
+export NXF_JVM_ARGS="-XX:InitialRAMPercentage=25 -XX:MaxRAMPercentage=75"
 
 nextflow run epi2me-labs/wf-basecalling \
     -r v1.1.7 \

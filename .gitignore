@@ -12,3 +12,4 @@ qc/*/
 seq_summaries/
 tmp*
 sample_ids.csv
+*.code-workspace
