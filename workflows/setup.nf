@@ -94,7 +94,6 @@ workflow SETUP {
         .mix(ont_cnv_ch)
         .mix(SPLIT_SNV_INDELS.out.snv)
         .mix(SPLIT_SNV_INDELS.out.indel)
-        .view()
 
     INDEX_INPUT_VCF(all_vcf_files)
 
