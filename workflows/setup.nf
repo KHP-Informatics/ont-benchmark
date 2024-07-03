@@ -7,6 +7,8 @@
 */
 
 include { SPLIT_SNV_INDELS } from '../modules/setup/split_snv_indels.nf'
+include { COLLECT_UNIQUE_ARRAY_VARIANT_IDS } from '../modules/setup/collect_unique_array_variant_ids.nf'
+include { FORMAT_MICROARRAY_VCF } from '../modules/setup/format_microarray_vcf.nf'
 include { INDEX_VCF as INDEX_INPUT_VCF } from '../modules/setup/index_vcf.nf'
 include { GENERATE_SDF_REFERENCE } from '../modules/setup/generate_sdf_reference.nf'
 
@@ -76,6 +78,10 @@ Channel
     .fromPath( params.reference_fasta, checkIfExists: true )
     .set { reference_fasta_ch }
 
+Channel
+    .fromPath( params.array_positions_file, checkIfExists: true )
+    .set { array_positions_ch }
+
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     WORKFLOW: SETUP
@@ -83,19 +89,27 @@ Channel
 */
 
 workflow SETUP {
+    /*
     snv_indel_files = illumina_snv_indel_ch.mix(ont_snv_indel_ch)
-
     SPLIT_SNV_INDELS(snv_indel_files)
+    */
+    microarray_vcfs_ch = microarray_ch.map { meta, vcf -> vcf }.collect()
+    COLLECT_UNIQUE_ARRAY_VARIANT_IDS(microarray_vcfs_ch)
+    /*
 
-    all_vcf_files = microarray_ch
-        .mix(illumina_sv_ch)
+    all_vcf_files = illumina_sv_ch
         .mix(ont_sv_ch)
         .mix(ont_str_ch)
         .mix(ont_cnv_ch)
         .mix(SPLIT_SNV_INDELS.out.snv)
         .mix(SPLIT_SNV_INDELS.out.indel)
 
-    INDEX_INPUT_VCF(all_vcf_files)
+    INDEX_INPUT_VCF(
+        all_vcf_files
+        )
 
-    GENERATE_SDF_REFERENCE(reference_fasta_ch)
+    GENERATE_SDF_REFERENCE(
+        reference_fasta_ch
+        )
+    */
 }
