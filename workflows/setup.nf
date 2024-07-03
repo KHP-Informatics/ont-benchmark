@@ -9,7 +9,7 @@
 include { SPLIT_SNV_INDELS } from '../modules/setup/split_snv_indels.nf'
 include { COLLECT_UNIQUE_ARRAY_VARIANT_IDS } from '../modules/setup/collect_unique_array_variant_ids.nf'
 include { CONVERT_TO_RSIDS } from '../modules/setup/convert_to_rsids.nf'
-include { FORMAT_MICROARRAY_VCF } from '../modules/setup/format_microarray_vcf.nf'
+include { QUERY_RSID_POSITIONS } from '../modules/setup/query_rsid_positions.nf'
 include { INDEX_VCF as INDEX_INPUT_VCF } from '../modules/setup/index_vcf.nf'
 include { GENERATE_SDF_REFERENCE } from '../modules/setup/generate_sdf_reference.nf'
 
@@ -100,6 +100,11 @@ workflow SETUP {
     CONVERT_TO_RSIDS(
         COLLECT_UNIQUE_ARRAY_VARIANT_IDS.out.unique_variant_ids,
         array_positions_ch
+        )
+
+    QUERY_RSID_POSITIONS(
+        CONVERT_TO_RSIDS.out.unique_rsids,
+        params.dbsnp_build
         )
     /*
 
