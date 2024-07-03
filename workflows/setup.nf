@@ -29,30 +29,43 @@ Channel
 // Input VCF files
 sample_ids_ch.flatMap { ont_id, lp_id ->
     def files = []
+    def missing_files = []
 
     // Microarray
     def microarray_file = file("${params.microarray_dir}/FinalReport_InfiniumOmni2-5-8v1-4_${lp_id}.vcf.gz")
     if (microarray_file.exists()) {
         files << tuple([id: lp_id, type: 'microarray', variant: 'snv'], microarray_file)
+    } else {
+        missing_files << "Microarray file for ${lp_id}"
     }
 
     // Illumina
     def illumina_file = file("${params.illumina_dir}/${lp_id}.vcf.gz")
     if (illumina_file.exists()) {
         files << tuple([id: lp_id, type: 'illumina', variant: 'snv_indel'], illumina_file)
+    } else {
+        missing_files << "Illumina SNV/INDEL file for ${lp_id}"
     }
 
     def illumina_sv_file = file("${params.illumina_dir}/${lp_id}.SV.vcf.gz")
     if (illumina_sv_file.exists()) {
         files << tuple([id: lp_id, type: 'illumina', variant: 'sv'], illumina_sv_file)
+    } else {
+        missing_files << "Illumina SV file for ${lp_id}"
     }
 
     // ONT
     ['snp', 'sv', 'str', 'cnv'].each { variant ->
-        def ont_file = file("${params.ont_dir}/${ont_id}_${params.basecall}.wf_${variant}.vcf.gz")
+        def ont_file = file("${params.ont_dir}/${ont_id}_${params.basecall}/${ont_id}_${params.basecall}.wf_${variant}.vcf.gz")
         if (ont_file.exists()) {
             files << tuple([id: ont_id, type: 'ont', variant: variant], ont_file)
+        } else {
+            missing_files << "ONT ${variant.toUpperCase()} file for ${ont_id}"
         }
+    }
+
+    if (!missing_files.isEmpty()) {
+        error "The following required files are missing:\n${missing_files.join('\n')}\nPlease ensure all required files exist before running the pipeline."
     }
 
     return files
@@ -90,10 +103,10 @@ Channel
 */
 
 workflow SETUP {
-    /*
     snv_indel_files = illumina_snv_indel_ch.mix(ont_snv_indel_ch)
+    snv_indel_files.view()
     SPLIT_SNV_INDELS(snv_indel_files)
-    */
+
     microarray_vcfs_ch = microarray_ch.map { meta, vcf -> vcf }.collect()
     COLLECT_UNIQUE_ARRAY_VARIANT_IDS(microarray_vcfs_ch)
 
@@ -106,7 +119,6 @@ workflow SETUP {
         CONVERT_TO_RSIDS.out.unique_rsids,
         params.dbsnp_build
         )
-    /*
 
     all_vcf_files = illumina_sv_ch
         .mix(ont_sv_ch)
@@ -122,5 +134,4 @@ workflow SETUP {
     GENERATE_SDF_REFERENCE(
         reference_fasta_ch
         )
-    */
 }
