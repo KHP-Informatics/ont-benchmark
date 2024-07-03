@@ -8,6 +8,7 @@
 
 include { SPLIT_SNV_INDELS } from '../modules/setup/split_snv_indels.nf'
 include { COLLECT_UNIQUE_ARRAY_VARIANT_IDS } from '../modules/setup/collect_unique_array_variant_ids.nf'
+include { CONVERT_TO_RSIDS } from '../modules/setup/convert_to_rsids.nf'
 include { FORMAT_MICROARRAY_VCF } from '../modules/setup/format_microarray_vcf.nf'
 include { INDEX_VCF as INDEX_INPUT_VCF } from '../modules/setup/index_vcf.nf'
 include { GENERATE_SDF_REFERENCE } from '../modules/setup/generate_sdf_reference.nf'
@@ -95,6 +96,11 @@ workflow SETUP {
     */
     microarray_vcfs_ch = microarray_ch.map { meta, vcf -> vcf }.collect()
     COLLECT_UNIQUE_ARRAY_VARIANT_IDS(microarray_vcfs_ch)
+
+    CONVERT_TO_RSIDS(
+        COLLECT_UNIQUE_ARRAY_VARIANT_IDS.out.unique_variant_ids,
+        array_positions_ch
+        )
     /*
 
     all_vcf_files = illumina_sv_ch
