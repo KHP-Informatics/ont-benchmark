@@ -77,7 +77,7 @@ process QUERY_RSID_POSITIONS {
         rsids = [line.strip() for line in f if line.strip()]
     print(f"Total rsIDs to process: {len(rsids)}")
 
-    batch_size = 1000
+    batch_size = 500
     all_positions = {}
 
     for i in range(0, len(rsids), batch_size):
