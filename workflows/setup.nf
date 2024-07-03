@@ -104,8 +104,17 @@ Channel
 
 workflow SETUP {
     snv_indel_files = illumina_snv_indel_ch.mix(ont_snv_indel_ch)
-    snv_indel_files.view()
     SPLIT_SNV_INDELS(snv_indel_files)
+
+    snv_ch = SPLIT_SNV_INDELS.out.snv.map { meta, file ->
+        meta = meta + [variant: 'snv']
+        [meta, file]
+    }
+
+    indel_ch = SPLIT_SNV_INDELS.out.indel.map { meta, file ->
+        meta = meta + [variant: 'indel']
+        [meta, file]
+    }
 
     microarray_vcfs_ch = microarray_ch.map { meta, vcf -> vcf }.collect()
     COLLECT_UNIQUE_ARRAY_VARIANT_IDS(microarray_vcfs_ch)
