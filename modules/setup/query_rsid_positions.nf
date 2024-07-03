@@ -3,7 +3,6 @@
 process QUERY_RSID_POSITIONS {
     input:
     path rsids_file
-    val dbsnp_build
 
     output:
     path "rsid_positions.txt", emit: rsid_positions
@@ -13,73 +12,90 @@ process QUERY_RSID_POSITIONS {
 
     script:
     """
-    #!/usr/bin/env python
-    from Bio import Entrez
-    import time
+    #!/usr/bin/env python -u
     import os
+    import time
+    from Bio import Entrez
+    import xml.etree.ElementTree as ET
+    from urllib.error import HTTPError
 
     Entrez.email = os.environ["NCBI_EMAIL"]
     Entrez.api_key = os.environ["NCBI_API_KEY"]
 
 
-    def fetch_positions(rsids, dbsnp_build):
-        query = " OR ".join(f"{rsid}[RSNumber]" for rsid in rsids)
-        query += f' AND "{dbsnp_build}"[Build]'
+    def fetch_positions(rsids):
+        print(f"Fetching positions for {len(rsids)} rsIDs...")
+        query = " OR ".join(f"{rsid}[Reference SNP ID]" for rsid in rsids)
 
-        handle = Entrez.esearch(db="snp", term=query, retmax=len(rsids))
-        record = Entrez.read(handle)
-        handle.close()
+        max_retries = 3
+        retry_delay = 5  # seconds
 
-        if not record["IdList"]:
-            return {}
+        for attempt in range(max_retries):
+            try:
+                handle = Entrez.esearch(db="snp", term=query, retmax=10000)
+                record = Entrez.read(handle)
+                handle.close()
 
-        handle = Entrez.efetch(
-            db="snp", id=",".join(record["IdList"]), rettype="json", retmode="text"
-        )
-        snp_records = Entrez.read(handle)
-        handle.close()
+                if not record["IdList"]:
+                    print("No results found for this batch.")
+                    return {}
 
-        positions = {}
-        for snp in snp_records["results"]:
-            rsid = f"rs{snp['refsnp_id']}"
-            placements = snp.get("primary_snapshot_data", {}).get(
-                "placements_with_allele", []
-            )
+                print(f"Found {len(record['IdList'])} matching SNPs. Fetching details...")
+                handle = Entrez.efetch(
+                    db="snp", id=",".join(record["IdList"]), retmode="xml"
+                )
+                xml_data = handle.read()
+                handle.close()
 
-            if placements:
-                for assembly in placements:
-                    if (
-                        assembly.get("seq_id_traits_by_assembly", [{}])[0].get(
-                            "assembly_name"
-                        )
-                        == "GRCh38"
-                    ):
-                        position = assembly["placement_annot"]["seq_id_traits"]["position"]
-                        positions[rsid] = position
-                        break
+                positions = {}
+                root = ET.fromstring(xml_data)
 
-                if rsid not in positions:
-                    position = placements[0]["placement_annot"]["seq_id_traits"]["position"]
-                    positions[rsid] = position
+                ns = {"ns": "https://www.ncbi.nlm.nih.gov/SNP/docsum"}
 
-        return positions
+                for doc_sum in root.findall(".//ns:DocumentSummary", ns):
+                    snp_id = doc_sum.find("ns:SNP_ID", ns)
+                    chrpos = doc_sum.find("ns:CHRPOS", ns)
+                    if snp_id is not None and chrpos is not None and chrpos.text:
+                        rs_id = f"rs{snp_id.text}"
+                        positions[rs_id] = chrpos.text
+                print(f"{len(positions)} positions found in this batch")
+
+                return positions
+
+            except HTTPError as e:
+                if e.code == 400 and attempt < max_retries - 1:
+                    print(f"Received HTTP 400 error. Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    raise
+
+        return {}
 
 
+    print(f"Reading rsIDs from file: ${rsids_file}")
     with open("${rsids_file}", "r") as f:
         rsids = [line.strip() for line in f if line.strip()]
+    print(f"Total rsIDs to process: {len(rsids)}")
 
-    batch_size = 100
+    batch_size = 1000
     all_positions = {}
 
     for i in range(0, len(rsids), batch_size):
         batch = rsids[i : i + batch_size]
-        positions = fetch_positions(batch, "${dbsnp_build}")
+        print(f"Processing batch {i//batch_size + 1} of {-(-len(rsids)//batch_size)}...")
+        positions = fetch_positions(batch)
         all_positions.update(positions)
+        print(f"Cumulative positions retrieved: {len(all_positions)}")
+        time.sleep(1)
 
+    print("Writing results to file...")
     with open("rsid_positions.txt", "w") as f:
         for rsid, position in all_positions.items():
             f.write(f"{rsid}\\t{position}\\n")
+    print(f"{len(all_positions)} positions written")
 
-    print(f"Queried positions for {len(all_positions)} rsIDs.")
+    missing_rsids = set(rsids) - set(all_positions.keys())
+    if missing_rsids:
+        print(f"Warning: The following rsIDs were not retrieved: {missing_rsids}")
     """
 }

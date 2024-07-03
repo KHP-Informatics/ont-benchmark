@@ -107,12 +107,12 @@ workflow SETUP {
     SPLIT_SNV_INDELS(snv_indel_files)
 
     snv_ch = SPLIT_SNV_INDELS.out.snv.map { meta, file ->
-        meta = meta + [variant: 'snv']
+        meta.variant = 'snv'
         [meta, file]
     }
 
     indel_ch = SPLIT_SNV_INDELS.out.indel.map { meta, file ->
-        meta = meta + [variant: 'indel']
+        meta.variant = 'indel'
         [meta, file]
     }
 
@@ -124,10 +124,7 @@ workflow SETUP {
         array_positions_ch
         )
 
-    QUERY_RSID_POSITIONS(
-        CONVERT_TO_RSIDS.out.unique_rsids,
-        params.dbsnp_build
-        )
+    QUERY_RSID_POSITIONS(CONVERT_TO_RSIDS.out.unique_rsids)
 
     all_vcf_files = illumina_sv_ch
         .mix(ont_sv_ch)
