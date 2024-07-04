@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 
-process COLLECT_UNIQUE_ARRAY_VARIANT_IDS {
+process COLLECT_UNIQUE_MICROARRAY_VARIANT_IDS {
     input:
     path vcfs
 
