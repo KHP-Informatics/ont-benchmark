@@ -13,14 +13,11 @@
 
 module load nextflow/23.10.0-gcc-13.2.0
 
-# Set the Singularity and Nextflow cache directories
 export NXF_HOME=/scratch/users/${USER}/nextflow/
 export NXF_CACHE=/scratch/users/${USER}/nextflow/cache
 export NXF_TEMP=/scratch/users/${USER}/nextflow/tmp
 export NXF_SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
-
-# Specify Nextflow max heap size
 export NXF_JVM_ARGS="-XX:InitialRAMPercentage=25 -XX:MaxRAMPercentage=75"
 
 nextflow run epi2me-labs/wf-basecalling \
