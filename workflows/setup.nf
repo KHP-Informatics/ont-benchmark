@@ -10,6 +10,7 @@ include { SPLIT_SNV_INDELS } from '../modules/setup/split_snv_indels.nf'
 include { COLLECT_UNIQUE_MICROARRAY_VARIANT_IDS } from '../modules/setup/collect_unique_microarray_variant_ids.nf'
 include { CONVERT_TO_RSIDS } from '../modules/setup/convert_to_rsids.nf'
 include { QUERY_RSID_POSITIONS } from '../modules/setup/query_rsid_positions.nf'
+include { UPDATE_MICROARRAY_VCF } from '../modules/setup/update_microarray_vcf.nf'
 include { INDEX_VCF as INDEX_INPUT_VCF } from '../modules/setup/index_vcf.nf'
 include { GENERATE_SDF_REFERENCE } from '../modules/setup/generate_sdf_reference.nf'
 
