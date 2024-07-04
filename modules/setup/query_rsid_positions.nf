@@ -27,7 +27,7 @@ process QUERY_RSID_POSITIONS {
         print(f"Fetching positions for {len(rsids)} rsIDs...")
         query = " OR ".join(f"{rsid}[Reference SNP ID]" for rsid in rsids)
 
-        max_retries = 3
+        max_retries = 5
         retry_delay = 5  # seconds
 
         for attempt in range(max_retries):
@@ -63,9 +63,23 @@ process QUERY_RSID_POSITIONS {
                 return positions
 
             except HTTPError as e:
-                if e.code == 400 and attempt < max_retries - 1:
-                    print(f"Received HTTP 400 error. Retrying in {retry_delay} seconds...")
-                    time.sleep(retry_delay)
+                print(
+                    f"HTTP error encountered: {str(e)} - Attempt {attempt+1}/{max_retries}"
+                )
+                if attempt < max_retries - 1:
+                    sleep_time = retry_delay * (2**attempt)  # Exponential backoff
+                    print(f"Retrying in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    raise
+            except IncompleteRead as e:
+                print(
+                    f"IncompleteRead error encountered: {str(e)} - Attempt {attempt+1}/{max_retries}"
+                )
+                if attempt < max_retries - 1:
+                    sleep_time = retry_delay * (2**attempt)  # Exponential backoff
+                    print(f"Retrying in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
                 else:
                     raise
 

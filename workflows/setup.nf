@@ -137,6 +137,7 @@ workflow SETUP {
         .mix(ont_cnv_ch)
         .mix(SPLIT_SNV_INDELS.out.snv)
         .mix(SPLIT_SNV_INDELS.out.indel)
+        .mix(UPDATE_MICROARRAY_VCF.out.pos_vcf)
 
     INDEX_INPUT_VCF(
         all_vcf_files_ch
