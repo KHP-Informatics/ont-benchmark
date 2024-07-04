@@ -18,6 +18,7 @@ process QUERY_RSID_POSITIONS {
     from Bio import Entrez
     import xml.etree.ElementTree as ET
     from urllib.error import HTTPError
+    from http.client import IncompleteRead
 
     Entrez.email = os.environ["NCBI_EMAIL"]
     Entrez.api_key = os.environ["NCBI_API_KEY"]
