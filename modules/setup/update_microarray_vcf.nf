@@ -52,19 +52,18 @@ process UPDATE_MICROARRAY_VCF {
             variant_id = record.id
             if variant_id in variant_to_rsid_pos:
                 rsid, chrom, pos = variant_to_rsid_pos[variant_id]
-                if chrom in reference_contigs:
+                if chrom in reference_contigs and isinstance(pos, int):
                     record.chrom = chrom
                     record.pos = pos
                     record.id = rsid
+                    vcf_out.write(record)
                 else:
                     print(
-                        f"Warning: Contig {chrom} not found in reference. Skipping record {variant_id}"
+                        f"Warning: Contig {chrom} or position {pos} not valid. Skipping record {variant_id}"
                     )
-                    continue
             else:
                 print(
-                    f"Warning: Variant {variant_id} not found in rsid_positions file. Keeping original information."
+                    f"Warning: Variant {variant_id} not found in rsid_positions file or missing essential data. Skipping."
                 )
-            vcf_out.write(record)
     """
 }
