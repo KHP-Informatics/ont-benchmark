@@ -25,9 +25,9 @@ process UPDATE_MICROARRAY_VCF {
     with pysam.VariantFile("${vcf}") as vcf_in:
         vcf_in.header.info.add(
             "reference",
-            value="GCA_000001405.15_GRCh38_no_alt_analysis_set.fna",
-            type="String",
-            description="Reference genome used for the VCF file.",
+            "1",
+            "String",
+            "Reference genome used for the VCF file."
         )
         for chrom in set(chrom for chrom, _ in rsid_to_position.values()):
             vcf_in.header.contigs.add(chrom)
