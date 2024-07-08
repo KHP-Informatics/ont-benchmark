@@ -16,7 +16,7 @@ nextflow.enable.dsl = 2
 */
 
 include { SETUP } from './workflows/setup.nf'
-//include { SNV_BENCHMARK } from './workflows/snv_benchmark.nf'
+include { SNV_BENCHMARK } from './workflows/snv_benchmark.nf'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -26,7 +26,12 @@ include { SETUP } from './workflows/setup.nf'
 
 workflow ONT_BENCHMARK {
     SETUP ()
-    //SNV_BENCHMARK ()
+/*
+    SNV_BENCHMARK(
+        SETUP.out.snv_samples_ch,
+        SETUP.out.reference_sdf_ch
+    )
+*/
 }
 
 /*
