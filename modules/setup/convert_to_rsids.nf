@@ -6,7 +6,7 @@ process CONVERT_TO_RSIDS {
     path array_positions_file
 
     output:
-    path "unique_rsids.txt", emit: unique_rsids
+    path "unique_rsids.csv", emit: unique_rsids
 
     script:
     """
@@ -30,9 +30,10 @@ process CONVERT_TO_RSIDS {
                 unique_rsids.update(id_to_rsid[variant_id])
             # If the ID is not in the mapping and doesn't start with 'rs', it's skipped
 
-    with open("unique_rsids.txt", "w") as out_file:
+    with open("unique_rsids.csv", "w", newline='') as out_file:
+        writer = csv.writer(out_file)
         for rsid in sorted(unique_rsids):
-            out_file.write(f"{rsid}\\n")
+            writer.writerow([rsid])
 
     print(f"Converted {len(unique_rsids)} unique rsIDs.")
     """

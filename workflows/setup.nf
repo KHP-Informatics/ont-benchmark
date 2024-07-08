@@ -126,11 +126,15 @@ workflow SETUP {
         array_positions_ch
     )
 
-    QUERY_RSID_POSITIONS(CONVERT_TO_RSIDS.out.unique_rsids)
+    QUERY_RSID_POSITIONS(
+        CONVERT_TO_RSIDS.out.unique_rsids,
+        array_positions_ch
+    )
 
     UPDATE_MICROARRAY_VCF(
-        microarray_ch,
-        QUERY_RSID_POSITIONS.out.rsid_positions
+        microarray_ch
+            .combine(QUERY_RSID_POSITIONS.out.rsid_positions)
+            .combine(reference_fasta_ch)
     )
 
     all_vcf_files_ch = illumina_sv_ch

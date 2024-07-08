@@ -4,8 +4,7 @@ process UPDATE_MICROARRAY_VCF {
     tag "${meta.id}"
 
     input:
-    tuple val(meta), path(vcf)
-    path rsid_positions
+    tuple val(meta), path(vcf), path(rsid_positions), path(reference_fasta)
 
     output:
     tuple val(meta), path("${meta.id}.pos.vcf.gz"), emit: pos_vcf
@@ -13,33 +12,59 @@ process UPDATE_MICROARRAY_VCF {
     script:
     """
     #!/usr/bin/env python
+    import csv
     import pysam
 
-    rsid_to_position = {}
-    with open("${rsid_positions}", "r") as f:
-        for line in f:
-            rsid, position = line.strip().split("\t")
-            chrom, pos = position.split(":")
-            rsid_to_position[rsid] = (chrom, int(pos))
+    reference_contigs = {}
+    with pysam.FastaFile("${reference_fasta}") as fasta:
+        for contig in fasta.references:
+            reference_contigs[contig] = fasta.get_reference_length(contig)
+
+    variant_to_rsid_pos = {}
+    with open("${rsid_positions}", "r", newline="") as f:
+        reader = csv.reader(f)
+        next(reader)  # Skip header
+        for row in reader:
+            variant, rsid, chrom, pos = row
+            variant_to_rsid_pos[variant] = (rsid, chrom, int(pos))
 
     with pysam.VariantFile("${vcf}") as vcf_in:
-        vcf_in.header.info.add(
-            "reference",
-            "1",
-            "String",
-            "Reference genome used for the VCF file."
-        )
-        for chrom in set(chrom for chrom, _ in rsid_to_position.values()):
-            vcf_in.header.contigs.add(chrom)
+        new_header = vcf_in.header.copy()
+        for contig, length in reference_contigs.items():
+            if contig in new_header.contigs:
+                new_header.contigs[contig].length = length
+            else:
+                new_header.contigs.add(contig, length=length)
+
+        new_header.add_line(f"##reference=file://${reference_fasta}")
 
         with pysam.VariantFile(
-            "${meta.id}.pos.vcf.gz", "wz", header=vcf_in.header
-        ) as vcf_out:
-            for record in vcf_in:
-                if record.id in rsid_to_position:
-                    chrom, pos = rsid_to_position[record.id]
+            "${meta.id}_intermediate.bcf", "wb", header=new_header
+        ) as bcf_out:
+            pass  # We only write the header at this stage
+
+    with pysam.VariantFile("${vcf}") as vcf_in, pysam.VariantFile(
+        "${meta.id}_intermediate.bcf", "rb"
+    ) as bcf_in, pysam.VariantFile(
+        "${meta.id}.pos.vcf.gz", "wz", header=bcf_in.header
+    ) as vcf_out:
+        for record in vcf_in:
+            variant_id = record.id
+            if variant_id in variant_to_rsid_pos:
+                rsid, chrom, pos = variant_to_rsid_pos[variant_id]
+                if chrom in reference_contigs:
                     record.chrom = chrom
                     record.pos = pos
-                vcf_out.write(record)
+                    record.id = rsid
+                else:
+                    print(
+                        f"Warning: Contig {chrom} not found in reference. Skipping record {variant_id}"
+                    )
+                    continue
+            else:
+                print(
+                    f"Warning: Variant {variant_id} not found in rsid_positions file. Keeping original information."
+                )
+            vcf_out.write(record)
     """
 }

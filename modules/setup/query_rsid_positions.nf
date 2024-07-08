@@ -3,9 +3,10 @@
 process QUERY_RSID_POSITIONS {
     input:
     path rsids_file
+    path array_positions_file
 
     output:
-    path "rsid_positions.txt", emit: rsid_positions
+    path "variant_rsid_positions.csv", emit: rsid_positions
 
     secret 'NCBI_EMAIL'
     secret 'NCBI_API_KEY'
@@ -15,6 +16,7 @@ process QUERY_RSID_POSITIONS {
     #!/usr/bin/env python -u
     import os
     import time
+    import csv
     import concurrent.futures
     import threading
     from Bio import Entrez
@@ -73,30 +75,30 @@ process QUERY_RSID_POSITIONS {
                         chrpos = doc_sum.find("ns:CHRPOS", ns)
                         if snp_id is not None and chrpos is not None and chrpos.text:
                             rs_id = f"rs{snp_id.text}"
-                            positions[rs_id] = chrpos.text
+                            chr, pos = chrpos.text.split(':')
+                            positions[rs_id] = (f"chr{chr}", pos)
                     print(f"{len(positions)} positions found in this batch")
 
                     return positions
 
                 except (HTTPError, IncompleteRead) as e:
                     sleep_time = retry_delay * (2**attempt)  # Exponential backoff
-                    print(
-                        f"{type(e).__name__} encountered: {e} - Attempt {attempt+1}/{max_retries}, retrying in {sleep_time} seconds..."
-                    )
+                    print(f"{type(e).__name__} encountered: {e} - Attempt {attempt+1}/{max_retries}, retrying in {sleep_time} seconds...")
                     time.sleep(sleep_time)
 
             return {}
 
 
     print(f"Reading rsIDs from file: ${rsids_file}")
-    with open("${rsids_file}", "r") as f:
-        rsids = [line.strip() for line in f if line.strip()]
+    with open("${rsids_file}", "r", newline='') as f:
+        reader = csv.reader(f)
+        rsids = [row[0] for row in reader if row]
     print(f"Total rsIDs to process: {len(rsids)}")
 
     batch_size = 500
     all_positions = {}
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=${task.cpus}) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=int("${task.cpus}")) as executor:
         future_to_batch = {
             executor.submit(fetch_positions, rsids[i : i + batch_size]): i
             for i in range(0, len(rsids), batch_size)
@@ -113,10 +115,25 @@ process QUERY_RSID_POSITIONS {
             except Exception as e:
                 print(f"Failed to fetch positions for batch starting at {batch_start}: {e}")
 
+    print(f"Reading array positions from file: ${array_positions_file}")
+    rsid_to_variant = {}
+    with open("${array_positions_file}", "r", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\\t")
+        for row in reader:
+            variant = row["Name"]
+            rsids = row["RsID"].split(',')  # Split rsIDs by comma
+            for rsid in rsids:
+                rsid = rsid.strip()  # Remove any whitespace
+                if rsid:  # Ensure the rsID is not empty
+                    rsid_to_variant[rsid] = variant
+
     print("Writing results to file...")
-    with open("rsid_positions.txt", "w") as f:
-        for rsid, position in all_positions.items():
-            f.write(f"{rsid}\\t{position}\\n")
+    with open("variant_rsid_positions.csv", "w", newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(["Variant", "RsID", "Chromosome", "Position"])
+        for rsid, (chromosome, position) in all_positions.items():
+            variant = rsid_to_variant.get(rsid, "Unknown")
+            writer.writerow([variant, rsid, chromosome, position])
     print(f"{len(all_positions)} positions written")
 
     missing_rsids = set(rsids) - set(all_positions.keys())
