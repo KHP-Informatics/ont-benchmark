@@ -104,6 +104,7 @@ Channel
 */
 
 workflow SETUP {
+    main:
     snv_indel_files = illumina_snv_indel_ch.mix(ont_snv_indel_ch)
     SPLIT_SNV_INDELS(snv_indel_files)
 
@@ -144,7 +145,20 @@ workflow SETUP {
         all_vcf_files_ch
     )
 
+    def grouped_by_sample = INDEX_INPUT_VCF.out.groupTuple().map { entry ->
+        def (id, files) = entry
+        files.groupBy { it.meta.id }.collect { ont_id, variants ->
+            [(ont_id, variants.first().meta.lp_id), variants.collect { [it.meta.type, it.meta.variant, it.path, it.index] }]
+        }
+    }
+        .set { indexed_samples_ch }
+        .view()
+
     GENERATE_SDF_REFERENCE(
         reference_fasta_ch
     )
+
+    emit:
+    grouped_samples = grouped_by_sample
+    reference_sdf = GENERATE_SDF_REFERENCE.out.reference_sdf
 }
