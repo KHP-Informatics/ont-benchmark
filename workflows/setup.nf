@@ -145,20 +145,41 @@ workflow SETUP {
         all_vcf_files_ch
     )
 
-    def grouped_by_sample = INDEX_INPUT_VCF.out.groupTuple().map { entry ->
-        def (id, files) = entry
-        files.groupBy { it.meta.id }.collect { ont_id, variants ->
-            [(ont_id, variants.first().meta.lp_id), variants.collect { [it.meta.type, it.meta.variant, it.path, it.index] }]
+    def group_by_sample_and_variant = INDEX_INPUT_VCF.out
+        .groupTuple()
+        .flatMap { entry ->
+            def (id, files) = entry
+            files.groupBy { it.meta.id }.collect { ont_id, variants ->
+                variants.groupBy { it.meta.variant }.collect { variant, variant_files ->
+                    [ont_id, variant_files.first().meta.lp_id, variant, variant_files.collect { [it.meta.type, it.path, it.index] }]
+                }
+            }
         }
-    }
-        .set { indexed_samples_ch }
-        .view()
+        .groupTuple(by: [0, 1, 2])
+        .map { ont_id, lp_id, variant, file_groups ->
+            [ont_id, lp_id, variant, file_groups.flatten(1)]
+        }
+
+    // Create separate channels for each variant type
+    group_by_sample_and_variant
+        .branch {
+            snv: it[2] == 'snv'
+            indel: it[2] == 'indel'
+            sv: it[2] == 'sv'
+            str: it[2] == 'str'
+            cnv: it[2] == 'cnv'
+        }
+        .set { grouped_variants_ch }
 
     GENERATE_SDF_REFERENCE(
         reference_fasta_ch
     )
 
     emit:
-    grouped_samples = grouped_by_sample
-    reference_sdf = GENERATE_SDF_REFERENCE.out.reference_sdf
+    snv_samples_ch = grouped_variants_ch.snv
+    indel_samples_ch = grouped_variants_ch.indel
+    sv_samples_ch = grouped_variants_ch.sv
+    str_samples_ch = grouped_variants_ch.str
+    cnv_samples_ch = grouped_variants_ch.cnv
+    reference_sdf_ch = GENERATE_SDF_REFERENCE.out.reference_sdf
 }
