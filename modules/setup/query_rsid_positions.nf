@@ -96,7 +96,7 @@ process QUERY_RSID_POSITIONS {
     batch_size = 500
     all_positions = {}
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=${task.cpus}) as executor:
         future_to_batch = {
             executor.submit(fetch_positions, rsids[i : i + batch_size]): i
             for i in range(0, len(rsids), batch_size)
