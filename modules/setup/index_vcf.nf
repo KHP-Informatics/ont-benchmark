@@ -7,10 +7,11 @@ process INDEX_VCF {
     tuple val(meta), path(vcf)
 
     output:
-    tuple val(meta), path(vcf), path("${vcf}.tbi")
+    tuple val(meta), path("${vcf}.sorted"), path("${vcf}.sorted.tbi")
 
     script:
     """
-    bcftools index --force --tbi ${vcf}
+    bcftools sort ${vcf} -o ${vcf}.sorted
+    bcftools index --force --tbi ${vcf}.sorted
     """
 }
