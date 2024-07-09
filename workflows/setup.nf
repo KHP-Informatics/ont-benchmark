@@ -108,15 +108,13 @@ workflow SETUP {
     snv_indel_files = illumina_snv_indel_ch.mix(ont_snv_indel_ch)
     SPLIT_SNV_INDELS(snv_indel_files)
 
-    snv_ch = SPLIT_SNV_INDELS.out.snv.map { meta, file ->
-        meta.variant = 'snv'
-        [meta, file]
-    }
+    SPLIT_SNV_INDELS.out.snv
+        .map { meta, vcf -> tuple([id: meta.id, type: meta.type, variant: 'snv'], vcf) }
+        .set { snv_ch }
 
-    indel_ch = SPLIT_SNV_INDELS.out.indel.map { meta, file ->
-        meta.variant = 'indel'
-        [meta, file]
-    }
+    SPLIT_SNV_INDELS.out.indel
+        .map { meta, vcf -> tuple([id: meta.id, type: meta.type, variant: 'indel'], vcf) }
+        .set { indel_ch }
 
     microarray_vcfs_ch = microarray_ch.map { meta, vcf -> vcf }.collect()
     COLLECT_UNIQUE_MICROARRAY_VARIANT_IDS(microarray_vcfs_ch)
@@ -141,49 +139,52 @@ workflow SETUP {
         .mix(ont_sv_ch)
         .mix(ont_str_ch)
         .mix(ont_cnv_ch)
-        .mix(SPLIT_SNV_INDELS.out.snv)
-        .mix(SPLIT_SNV_INDELS.out.indel)
+        .mix(snv_ch)
+        .mix(indel_ch)
         .mix(UPDATE_MICROARRAY_VCF.out.pos_vcf)
 
     INDEX_INPUT_VCF(
-        all_vcf_files_ch
+        all_vcf_files_ch.map { meta, vcf -> tuple(meta, vcf) }
     )
 
-    def group_by_sample_and_variant = INDEX_INPUT_VCF.out
-        .groupTuple()
-        .flatMap { entry ->
-            def (id, files) = entry
-            files.groupBy { it.meta.id }.collect { ont_id, variants ->
-                variants.groupBy { it.meta.variant }.collect { variant, variant_files ->
-                    [ont_id, variant_files.first().meta.lp_id, variant, variant_files.collect { [it.meta.type, it.path, it.index] }]
-                }
-            }
+    INDEX_INPUT_VCF.out
+        .map { meta, vcf, index ->
+            tuple(meta.id, meta.type, meta.variant, vcf, index)
         }
-        .groupTuple(by: [0, 1, 2])
-        .map { ont_id, lp_id, variant, file_groups ->
-            [ont_id, lp_id, variant, file_groups.flatten(1)]
-        }
-
-    // Create separate channels for each variant type
-    group_by_sample_and_variant
         .branch {
-            snv: it[2] == 'snv'
+            snv: it[2] == 'snv' || it[1] == 'microarray'
             indel: it[2] == 'indel'
             sv: it[2] == 'sv'
             str: it[2] == 'str'
             cnv: it[2] == 'cnv'
         }
-        .set { grouped_variants_ch }
+        .set { indexed_vcfs }
+
+    snv_samples_ch = indexed_vcfs.snv
+        .map { id, type, variant, vcf, index -> tuple(id, type, vcf, index) }
+        .toList()
+    indel_samples_ch = indexed_vcfs.indel
+        .map { id, type, variant, vcf, index -> tuple(id, type, vcf, index) }
+        .toList()
+    sv_samples_ch = indexed_vcfs.sv
+        .map { id, type, variant, vcf, index -> tuple(id, type, vcf, index) }
+        .toList()
+    str_samples_ch = indexed_vcfs.str
+        .map { id, type, variant, vcf, index -> tuple(id, type, vcf, index) }
+        .toList()
+    cnv_samples_ch = indexed_vcfs.cnv
+        .map { id, type, variant, vcf, index -> tuple(id, type, vcf, index) }
+        .toList()
 
     GENERATE_SDF_REFERENCE(
         reference_fasta_ch
     )
 
     emit:
-    snv_samples_ch = grouped_variants_ch.snv
-    indel_samples_ch = grouped_variants_ch.indel
-    sv_samples_ch = grouped_variants_ch.sv
-    str_samples_ch = grouped_variants_ch.str
-    cnv_samples_ch = grouped_variants_ch.cnv
+    snv_samples_ch
+    indel_samples_ch
+    sv_samples_ch
+    str_samples_ch
+    cnv_samples_ch
     reference_sdf_ch = GENERATE_SDF_REFERENCE.out.reference_sdf
 }
