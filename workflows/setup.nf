@@ -80,6 +80,12 @@ sample_ids_ch.flatMap { ont_id, lp_id ->
         ont_cnv: it[0].type == 'ont' && it[0].variant == 'cnv'
     }.set { all_vcf_files }
 
+sample_ids_map = [:]
+sample_ids_ch.subscribe { ont_id, lp_id ->
+    sample_ids_map[ont_id] = lp_id
+    sample_ids_map[lp_id] = ont_id
+}
+
 microarray_ch = all_vcf_files.microarray
 illumina_snv_indel_ch = all_vcf_files.illumina_snv_indel
 illumina_sv_ch = all_vcf_files.illumina_sv
@@ -149,36 +155,42 @@ workflow SETUP {
 
     INDEX_INPUT_VCF.out
         .map { meta, vcf, index ->
-            tuple(meta.id, meta.type, meta.variant, vcf, index)
+            def ont_id = meta.type == 'ont' ? meta.id : sample_ids_map[meta.id]
+            def lp_id = meta.type == 'ont' ? sample_ids_map[meta.id] : meta.id
+            tuple(ont_id, lp_id, meta.type, meta.variant, vcf, index)
         }
         .branch {
-            snv: it[2] == 'snv' || it[1] == 'microarray'
-            indel: it[2] == 'indel'
-            sv: it[2] == 'sv'
-            str: it[2] == 'str'
-            cnv: it[2] == 'cnv'
+            snv: it[3] == 'snv' || (it[2] == 'microarray' && it[3] == 'snv')
+            indel: it[3] == 'indel'
+            sv: it[3] == 'sv'
+            str: it[3] == 'str'
+            cnv: it[3] == 'cnv'
         }
-        .set { indexed_vcfs }
+        .set { variant_channels }
 
-    snv_samples_ch = indexed_vcfs.snv
-        .map { id, type, variant, vcf, index -> tuple(id, type, vcf, index) }
-        .toList()
-    indel_samples_ch = indexed_vcfs.indel
-        .map { id, type, variant, vcf, index -> tuple(id, type, vcf, index) }
-        .toList()
-    sv_samples_ch = indexed_vcfs.sv
-        .map { id, type, variant, vcf, index -> tuple(id, type, vcf, index) }
-        .toList()
-    str_samples_ch = indexed_vcfs.str
-        .map { id, type, variant, vcf, index -> tuple(id, type, vcf, index) }
-        .toList()
-    cnv_samples_ch = indexed_vcfs.cnv
-        .map { id, type, variant, vcf, index -> tuple(id, type, vcf, index) }
-        .toList()
+    def process_variant_channel = { channel ->
+        channel
+            .groupTuple(by: [0, 1])
+            .map { ont_id, lp_id, types, variants, vcfs, indices ->
+                def grouped = [:]
+                for (i in 0..<types.size()) {
+                    grouped[types[i]] = tuple(variants[i], vcfs[i], indices[i])
+                }
+                tuple(ont_id, lp_id, grouped)
+            }
+    }
+
+    snv_samples_ch = process_variant_channel(variant_channels.snv)
+    indel_samples_ch = process_variant_channel(variant_channels.indel)
+    sv_samples_ch = process_variant_channel(variant_channels.sv)
+    str_samples_ch = process_variant_channel(variant_channels.str)
+    cnv_samples_ch = process_variant_channel(variant_channels.cnv)
 
     GENERATE_SDF_REFERENCE(
         reference_fasta_ch
     )
+
+    snv_samples_ch.view()
 
     emit:
     snv_samples_ch
