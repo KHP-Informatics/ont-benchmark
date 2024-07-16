@@ -26,12 +26,11 @@ include { SNV_BENCHMARK } from './workflows/snv_benchmark.nf'
 
 workflow ONT_BENCHMARK {
     SETUP ()
-/*
+
     SNV_BENCHMARK(
         SETUP.out.snv_samples_ch,
         SETUP.out.reference_sdf_ch
     )
-*/
 }
 
 /*
