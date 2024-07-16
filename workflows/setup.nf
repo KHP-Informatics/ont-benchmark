@@ -172,11 +172,17 @@ workflow SETUP {
         channel
             .groupTuple(by: [0, 1])
             .map { ont_id, lp_id, types, variants, vcfs, indices ->
-                def grouped = [:]
+                def grouped = [ont: null, illumina: null, microarray: null]
                 for (i in 0..<types.size()) {
                     grouped[types[i]] = tuple(variants[i], vcfs[i], indices[i])
                 }
-                tuple(ont_id, lp_id, grouped)
+                def orderedFiles = [
+                    grouped.ont,
+                    grouped.illumina,
+                    grouped.microarray
+                ]
+                orderedFiles = orderedFiles.findAll { it != null }
+                tuple(ont_id, lp_id, *orderedFiles.collect { it[1] }, *orderedFiles.collect { it[2] })
             }
     }
 
@@ -189,8 +195,6 @@ workflow SETUP {
     GENERATE_SDF_REFERENCE(
         reference_fasta_ch
     )
-
-    snv_samples_ch.view()
 
     emit:
     snv_samples_ch
