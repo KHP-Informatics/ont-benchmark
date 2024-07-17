@@ -31,15 +31,17 @@ workflow SNV_BENCHMARK {
     main:
     FILTER_VCF_SITES(snv_samples_ch)
 
-/*
+    ont_comparison = FILTER_VCF_SITES.out.map { ont_id, lp_id, ont_vcf, ont_index, illumina_vcf, illumina_index, array_vcf, array_index ->
+        tuple(ont_id, lp_id, ont_vcf, ont_index, array_vcf, array_index, 'ont')
+    }
+
+    illumina_comparison = FILTER_VCF_SITES.out.map { ont_id, lp_id, ont_vcf, ont_index, illumina_vcf, illumina_index, array_vcf, array_index ->
+        tuple(lp_id, ont_id, illumina_vcf, illumina_index, array_vcf, array_index, 'illumina')
+    }
+
+    comparison_ch = ont_comparison.mix(illumina_comparison)
+
     RTG_VCFEVAL(
-        FILTER_VCF_SITES.out,
-        reference_sdf_ch
+        comparison_ch.combine(reference_sdf_ch)
     )
-
-    vcfeval_results = RTG_VCFEVAL.out.eval_dir
-
-    emit:
-    vcfeval_results
-*/
 }
