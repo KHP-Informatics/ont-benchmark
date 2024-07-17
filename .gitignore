@@ -6,6 +6,7 @@ benchmark_data/
 references/
 references_old/
 work/
+output/
 jobs/*/.nextflow*
 .nextflow*
 qc/*/
