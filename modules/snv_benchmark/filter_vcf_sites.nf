@@ -1,16 +1,18 @@
 #!/usr/bin/env nextflow
 
 process FILTER_VCF_SITES {
+    tag "${ont_id}|${lp_id}"
+
     input:
     tuple val(ont_id), val(lp_id),
-          path(ont_vcf), path(illumina_vcf), path(array_vcf),
-          path(ont_index), path(illumina_index), path(array_index)
+        path(ont_vcf), path(illumina_vcf), path(array_vcf),
+        path(ont_index), path(illumina_index), path(array_index)
 
     output:
     tuple val(ont_id), val(lp_id),
-          path("${ont_id}.filtered.vcf.gz"), path("${ont_id}.filtered.vcf.gz.tbi"),
-          path("${lp_id}.filtered.vcf.gz"), path("${lp_id}.filtered.vcf.gz.tbi"),
-          path(array_vcf), path(array_index)
+        path("${ont_id}.filtered.vcf.gz"), path("${ont_id}.filtered.vcf.gz.tbi"),
+        path("${lp_id}.illumina.filtered.vcf.gz"), path("${lp_id}.illumina.filtered.vcf.gz.tbi"),
+        path(array_vcf), path(array_index)
 
     script:
     """
@@ -19,17 +21,9 @@ process FILTER_VCF_SITES {
     echo "ONT VCF: \$(bcftools stats ${ont_vcf} | grep 'number of records:' | cut -f4)"
     echo "Illumina VCF: \$(bcftools stats ${illumina_vcf} | grep 'number of records:' | cut -f4)"
 
-    bcftools view ${array_vcf} | \
-    awk 'BEGIN {FS="\t"; OFS="\t"} !/^#/ {if (\$2 ~ /^[0-9]+\$/ && \$2 > 0) print \$0; else next} /^#/ {print \$0}' | \
-    bcftools view -Oz -o array_filtered.vcf.gz
+    bcftools query -f '%CHROM\t%POS\n' ${array_vcf} > array_positions.txt
 
-    bcftools index -t array_filtered.vcf.gz
-
-    echo "Array VCF after filtering invalid positions: \$(bcftools stats array_filtered.vcf.gz | grep 'number of records:' | cut -f4)"
-
-    bcftools query -f '%CHROM\t%POS\n' array_filtered.vcf.gz > array_positions.txt
-
-    echo "Number of positions extracted from filtered array VCF: \$(wc -l < array_positions.txt)"
+    echo "Number of positions extracted from array VCF: \$(wc -l < array_positions.txt)"
 
     bcftools view -T array_positions.txt ${ont_vcf} -Oz -o ${ont_id}.filtered.vcf.gz
 
@@ -37,10 +31,10 @@ process FILTER_VCF_SITES {
 
     echo "ONT VCF after filtering: \$(bcftools stats ${ont_id}.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
 
-    bcftools view -T array_positions.txt ${illumina_vcf} -Oz -o ${lp_id}.filtered.vcf.gz
+    bcftools view -T array_positions.txt ${illumina_vcf} -Oz -o ${lp_id}.illumina.filtered.vcf.gz
 
-    bcftools index -t ${lp_id}.filtered.vcf.gz
+    bcftools index -t ${lp_id}.illumina.filtered.vcf.gz
 
-    echo "Illumina VCF after filtering: \$(bcftools stats ${lp_id}.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
+    echo "Illumina VCF after filtering: \$(bcftools stats ${lp_id}.illumina.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
     """
 }
