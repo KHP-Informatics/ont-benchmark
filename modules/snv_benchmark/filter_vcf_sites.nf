@@ -10,8 +10,8 @@ process FILTER_VCF_SITES {
 
     output:
     tuple val(ont_id), val(lp_id),
-        path("${ont_id}.filtered.vcf.gz"), path("${ont_id}.filtered.vcf.gz.tbi"),
-        path("${lp_id}.illumina.filtered.vcf.gz"), path("${lp_id}.illumina.filtered.vcf.gz.tbi"),
+        path("${ont_id}.ont.snv.filtered.vcf.gz"), path("${ont_id}.ont.snv.filtered.vcf.gz.tbi"),
+        path("${lp_id}.illumina.snv.filtered.vcf.gz"), path("${lp_id}.illumina.snv.filtered.vcf.gz.tbi"),
         path(array_vcf), path(array_index)
 
     script:
@@ -25,16 +25,16 @@ process FILTER_VCF_SITES {
 
     echo "Number of positions extracted from array VCF: \$(wc -l < array_positions.txt)"
 
-    bcftools view -T array_positions.txt ${ont_vcf} -Oz -o ${ont_id}.filtered.vcf.gz
+    bcftools view -T array_positions.txt ${ont_vcf} -Oz -o ${ont_id}.ont.snv.filtered.vcf.gz
 
-    bcftools index -t ${ont_id}.filtered.vcf.gz
+    bcftools index -t ${ont_id}.ont.snv.filtered.vcf.gz
 
-    echo "ONT VCF after filtering: \$(bcftools stats ${ont_id}.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
+    echo "ONT VCF after filtering: \$(bcftools stats ${ont_id}.ont.snv.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
 
-    bcftools view -T array_positions.txt ${illumina_vcf} -Oz -o ${lp_id}.illumina.filtered.vcf.gz
+    bcftools view -T array_positions.txt ${illumina_vcf} -Oz -o ${lp_id}.illumina.snv.filtered.vcf.gz
 
-    bcftools index -t ${lp_id}.illumina.filtered.vcf.gz
+    bcftools index -t ${lp_id}.illumina.snv.filtered.vcf.gz
 
-    echo "Illumina VCF after filtering: \$(bcftools stats ${lp_id}.illumina.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
+    echo "Illumina VCF after filtering: \$(bcftools stats ${lp_id}.illumina.snv.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
     """
 }
