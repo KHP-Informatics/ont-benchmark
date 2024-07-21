@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 
-process INDEX_VCF {
+process SORT_VCF {
     tag "${meta.id}|${meta.type}|${meta.variant}"
 
     input:
@@ -10,8 +10,13 @@ process INDEX_VCF {
     tuple val(meta), path("${meta.id}.${meta.type}.${meta.variant}.sorted.vcf.gz"), path("${meta.id}.${meta.type}.${meta.variant}.sorted.vcf.gz.tbi")
 
     script:
+    def max_mem = task.memory ? "${task.memory.toMega()}M" : ''
     """
-    bcftools sort ${vcf} -Oz -o ${meta.id}.${meta.type}.${meta.variant}.sorted.vcf.gz
-    bcftools index --force --tbi ${meta.id}.${meta.type}.${meta.variant}.sorted.vcf.gz
+    bcftools sort \
+        ${vcf} \
+        --max-mem ${max_mem} \
+        --write-index=tbi \
+        -Oz \
+        -o ${meta.id}.${meta.type}.${meta.variant}.sorted.vcf.gz
     """
 }

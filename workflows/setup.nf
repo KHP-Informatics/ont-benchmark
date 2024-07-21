@@ -11,7 +11,7 @@ include { COLLECT_UNIQUE_MICROARRAY_VARIANT_IDS } from '../modules/setup/collect
 include { CONVERT_TO_RSIDS } from '../modules/setup/convert_to_rsids.nf'
 include { QUERY_RSID_POSITIONS } from '../modules/setup/query_rsid_positions.nf'
 include { UPDATE_MICROARRAY_VCF } from '../modules/setup/update_microarray_vcf.nf'
-include { INDEX_VCF as INDEX_INPUT_VCF } from '../modules/setup/index_vcf.nf'
+include { SORT_VCF } from '../modules/setup/sort_vcf.nf'
 include { GENERATE_SDF_REFERENCE } from '../modules/setup/generate_sdf_reference.nf'
 
 /*
@@ -149,11 +149,11 @@ workflow SETUP {
         .mix(indel_ch)
         .mix(UPDATE_MICROARRAY_VCF.out.pos_vcf)
 
-    INDEX_INPUT_VCF(
+    SORT_VCF(
         all_vcf_files_ch.map { meta, vcf -> tuple(meta, vcf) }
     )
 
-    INDEX_INPUT_VCF.out
+    SORT_VCF.out
         .map { meta, vcf, index ->
             def ont_id = meta.type == 'ont' ? meta.id : sample_ids_map[meta.id]
             def lp_id = meta.type == 'ont' ? sample_ids_map[meta.id] : meta.id
