@@ -6,7 +6,7 @@
 ========================================================================================
 */
 
-include { FILTER_VCF_SITES } from '../modules/snv_benchmark/filter_vcf_sites.nf'
+include { FILTER_SNV_VCF } from '../modules/snv_benchmark/filter_snv_vcf.nf'
 include { RTG_VCFEVAL } from '../modules/snv_benchmark/rtg_vcfeval.nf'
 
 /*
@@ -15,7 +15,9 @@ include { RTG_VCFEVAL } from '../modules/snv_benchmark/rtg_vcfeval.nf'
 ========================================================================================
 */
 
-// N/A
+Channel
+    .fromPath(params.low_complexity_regions)
+    .set { low_complexity_regions_ch }
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -29,13 +31,15 @@ workflow SNV_BENCHMARK {
     reference_sdf_ch
 
     main:
-    FILTER_VCF_SITES(snv_samples_ch)
+    filter_vcf_input_ch = snv_samples_ch.combine(low_complexity_regions_ch)
 
-    ont_comparison = FILTER_VCF_SITES.out.map { ont_id, lp_id, ont_vcf, ont_index, illumina_vcf, illumina_index, array_vcf, array_index ->
+    FILTER_SNV_VCF(filter_vcf_input_ch)
+
+    ont_comparison = FILTER_SNV_VCF.out.map { ont_id, lp_id, ont_vcf, ont_index, illumina_vcf, illumina_index, array_vcf, array_index ->
         tuple(ont_id, lp_id, ont_vcf, ont_index, array_vcf, array_index, 'ont')
     }
 
-    illumina_comparison = FILTER_VCF_SITES.out.map { ont_id, lp_id, ont_vcf, ont_index, illumina_vcf, illumina_index, array_vcf, array_index ->
+    illumina_comparison = FILTER_SNV_VCF.out.map { ont_id, lp_id, ont_vcf, ont_index, illumina_vcf, illumina_index, array_vcf, array_index ->
         tuple(lp_id, ont_id, illumina_vcf, illumina_index, array_vcf, array_index, 'illumina')
     }
 
