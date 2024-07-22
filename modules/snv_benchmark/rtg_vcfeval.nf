@@ -26,9 +26,9 @@ process RTG_VCFEVAL {
     rtg_dir = "${sample_id}.${file_type}"
     """
     rtg vcfeval --baseline=${truth_vcf} \
-                --calls=${query_vcf} \
-                --template=${reference_sdf} \
-                --output=${rtg_dir} \
-                --output-mode=roc-only
+        --calls=${query_vcf} \
+        --template=${reference_sdf} \
+        --output=${rtg_dir} \
+        --output-mode=roc-only
     """
 }
