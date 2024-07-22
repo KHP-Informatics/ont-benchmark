@@ -7,7 +7,9 @@ process SORT_VCF {
     tuple val(meta), path(vcf)
 
     output:
-    tuple val(meta), path("${meta.id}.${meta.type}.${meta.variant}.sorted.vcf.gz"), path("${meta.id}.${meta.type}.${meta.variant}.sorted.vcf.gz.tbi")
+    tuple val(meta),
+        path("${meta.id}.${meta.type}.${meta.variant}.sorted.vcf.gz"),
+        path("${meta.id}.${meta.type}.${meta.variant}.sorted.vcf.gz.csi")
 
     script:
     def max_mem = task.memory ? "${task.memory.toMega()}M" : ''
