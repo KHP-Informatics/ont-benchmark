@@ -7,8 +7,8 @@
 */
 
 include { FILTER_SNV_VCF } from '../modules/snv_benchmark/filter_snv_vcf.nf'
-include { RTG_VCFEVAL } from '../modules/snv_benchmark/rtg_vcfeval.nf'
-include { RTG_ROCPLOT } from '../modules/snv_benchmark/rtg_rocplot.nf'
+include { RTG_VCFEVAL } from '../modules/shared/rtg_vcfeval.nf'
+include { RTG_ROCPLOT } from '../modules/shared/rtg_rocplot.nf'
 
 /*
 ========================================================================================
