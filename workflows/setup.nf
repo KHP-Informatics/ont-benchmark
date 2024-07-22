@@ -112,6 +112,7 @@ Channel
 workflow SETUP {
     main:
     snv_indel_files = illumina_snv_indel_ch.mix(ont_snv_indel_ch)
+
     SPLIT_SNV_INDELS(snv_indel_files)
 
     SPLIT_SNV_INDELS.out.snv
@@ -196,11 +197,13 @@ workflow SETUP {
         reference_fasta_ch
     )
 
+    reference_sdf_ch = GENERATE_SDF_REFERENCE.out.reference_sdf
+
     emit:
     snv_samples_ch
     indel_samples_ch
     sv_samples_ch
     str_samples_ch
     cnv_samples_ch
-    reference_sdf_ch = GENERATE_SDF_REFERENCE.out.reference_sdf
+    reference_sdf_ch
 }
