@@ -5,8 +5,9 @@ process FILTER_SNV_VCF {
 
     input:
     tuple val(ont_id), val(lp_id),
-        path(ont_vcf), path(illumina_vcf), path(array_vcf),
-        path(ont_index), path(illumina_index), path(array_index),
+        path(ont_vcf), path(ont_index),
+        path(illumina_vcf), path(illumina_index),
+        path(array_vcf), path(array_index),
         path(low_complexity_regions)
 
     output:
