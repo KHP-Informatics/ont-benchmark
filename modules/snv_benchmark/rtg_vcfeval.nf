@@ -1,3 +1,5 @@
+#!/usr/bin/env nextflow
+
 process RTG_VCFEVAL {
     tag "${sample_id}|${file_type}"
 
