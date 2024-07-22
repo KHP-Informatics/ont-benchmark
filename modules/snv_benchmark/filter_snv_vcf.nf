@@ -30,13 +30,11 @@ process FILTER_SNV_VCF {
     echo "Number of positions extracted: \$(wc -l < array_positions.tsv)"
 
     bcftools view -Ou -T ${low_complexity_regions} ${ont_vcf} | \
-    # bcftools filter -Ou -e 'QUAL < 0' | \
     bcftools view -Ou -T array_positions.tsv | \
     bcftools view -Oz --write-index=tbi -o ${ont_id}.ont.snv.filtered.vcf.gz
     echo "ONT VCF after filtering: \$(bcftools stats ${ont_id}.ont.snv.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
 
     bcftools view -Ou -T ${low_complexity_regions} ${illumina_vcf} | \
-    # bcftools filter -Ou -e 'QUAL < 0' | \
     bcftools view -Ou -T array_positions.tsv | \
     bcftools view -Oz --write-index=tbi -o ${lp_id}.illumina.snv.filtered.vcf.gz
     echo "Illumina VCF after filtering: \$(bcftools stats ${lp_id}.illumina.snv.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
