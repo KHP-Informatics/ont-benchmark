@@ -8,6 +8,7 @@
 
 include { FILTER_SNV_VCF } from '../modules/snv_benchmark/filter_snv_vcf.nf'
 include { RTG_VCFEVAL } from '../modules/snv_benchmark/rtg_vcfeval.nf'
+include { RTG_ROCPLOT } from '../modules/snv_benchmark/rtg_rocplot.nf'
 
 /*
 ========================================================================================
@@ -47,5 +48,9 @@ workflow SNV_BENCHMARK {
 
     RTG_VCFEVAL(
         comparison_ch.combine(reference_sdf_ch)
+    )
+
+    RTG_ROCPLOT(
+        RTG_VCFEVAL.out.weighted_roc.collect()
     )
 }
