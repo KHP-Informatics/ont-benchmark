@@ -32,6 +32,8 @@ workflow SNV_BENCHMARK {
     reference_sdf_ch
 
     main:
+    def variant_type = 'snv'
+
     filter_snv_vcf__ch = snv_samples_ch.combine(high_confidence_regions_ch)
 
     FILTER_SNV_VCF(filter_snv_vcf__ch)
@@ -55,7 +57,8 @@ workflow SNV_BENCHMARK {
     comparison_ch = ont_comparison_hc.mix(illumina_comparison_hc, ont_comparison_lc, illumina_comparison_lc)
 
     RTG_VCFEVAL(
-        comparison_ch.combine(reference_sdf_ch)
+        comparison_ch.combine(reference_sdf_ch),
+        variant_type
     )
 
     weighted_roc_hc = RTG_VCFEVAL.out.weighted_roc.filter { it.toString().contains("_hc_") }.collect()
@@ -63,6 +66,7 @@ workflow SNV_BENCHMARK {
 
     RTG_ROCPLOT(
         weighted_roc_hc,
-        weighted_roc_lc
+        weighted_roc_lc,
+        variant_type
     )
 }
