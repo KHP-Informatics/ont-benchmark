@@ -16,7 +16,7 @@ process RTG_VCFEVAL {
     path "${rtg_dir}/allele_weighted_roc.tsv.gz", emit: allele_weighted_roc
     path "${rtg_dir}/non_snp_roc.tsv.gz", emit: non_snp_roc
     path "${rtg_dir}/summary.txt", emit: summary
-    path "${rtg_dir}/weighted_roc.tsv.gz", emit: weighted_roc
+    path "${rtg_dir}/${sample_id}_${file_type}_weighted_roc.tsv.gz", emit: weighted_roc
     path "${rtg_dir}/allele_snp_roc.tsv.gz", emit: allele_snp_roc
     path "${rtg_dir}/phasing.txt", emit: phasing
     path "${rtg_dir}/snp_roc.tsv.gz", emit: snp_roc
@@ -30,5 +30,7 @@ process RTG_VCFEVAL {
         --template=${reference_sdf} \
         --output=${rtg_dir} \
         --output-mode=roc-only
+
+    mv ${rtg_dir}/weighted_roc.tsv.gz ${rtg_dir}/${sample_id}_${file_type}_weighted_roc.tsv.gz
     """
 }
