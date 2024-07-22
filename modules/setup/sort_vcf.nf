@@ -15,7 +15,7 @@ process SORT_VCF {
     bcftools sort \
         ${vcf} \
         --max-mem ${max_mem} \
-        --write-index=tbi \
+        --write-index=csi \
         -Oz \
         -o ${meta.id}.${meta.type}.${meta.variant}.sorted.vcf.gz
     """
