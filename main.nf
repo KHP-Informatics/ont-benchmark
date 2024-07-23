@@ -18,6 +18,7 @@ nextflow.enable.dsl = 2
 include { SETUP } from './workflows/setup.nf'
 include { SNV_BENCHMARK } from './workflows/snv_benchmark.nf'
 include { INDEL_BENCHMARK } from './workflows/indel_benchmark.nf'
+include { SV_CONCORDANCE } from './workflows/sv_concordance.nf'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -36,6 +37,10 @@ workflow ONT_BENCHMARK {
     INDEL_BENCHMARK(
         SETUP.out.indel_samples_ch,
         SETUP.out.reference_sdf_ch
+    )
+
+    SV_CONCORDANCE(
+        SETUP.out.sv_samples_ch
     )
 }
 

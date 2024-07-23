@@ -94,7 +94,6 @@ ont_sv_ch = all_vcf_files.ont_sv
 ont_str_ch = all_vcf_files.ont_str
 ont_cnv_ch = all_vcf_files.ont_cnv
 
-// FASTA genome reference
 Channel
     .fromPath( params.reference_fasta, checkIfExists: true )
     .set { reference_fasta_ch }
