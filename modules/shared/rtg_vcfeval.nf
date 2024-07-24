@@ -24,14 +24,17 @@ process RTG_VCFEVAL {
     path "${rtg_dir}/vcfeval.log", emit: vcfeval_log
 
     script:
-    rtg_dir = "${sample_id}.${variant_type}.${region_type}"
+    rtg_dir = "${sample_id}.${variant_type}"
     """
-    rtg vcfeval --baseline=${truth_vcf} \
+    rtg vcfeval \
+        --baseline=${truth_vcf} \
         --calls=${query_vcf} \
         --template=${reference_sdf} \
         --output=${rtg_dir} \
         --output-mode=roc-only
 
-    mv ${rtg_dir}/weighted_roc.tsv.gz ${rtg_dir}/${sample_id}_${variant_type}_${region_type}_weighted_roc.tsv.gz
+    cp \
+        ${rtg_dir}/weighted_roc.tsv.gz \
+        ${rtg_dir}/${sample_id}_${variant_type}_${region_type}_weighted_roc.tsv.gz
     """
 }
