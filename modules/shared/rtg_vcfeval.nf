@@ -13,20 +13,21 @@ process RTG_VCFEVAL {
     val(variant_type)
 
     output:
-output:
     path "${rtg_dir}/${sample_id}_${variant_type}_${region_type}_weighted_roc.tsv.gz", emit: weighted_roc
-    path "${rtg_dir}/allele_non_snp_roc.tsv.gz", emit: allele_non_snp_roc
-    path "${rtg_dir}/allele_snp_roc.tsv.gz", emit: allele_snp_roc
-    path "${rtg_dir}/allele_weighted_roc.tsv.gz", emit: allele_weighted_roc
-    path "${rtg_dir}/non_snp_roc.tsv.gz", emit: non_snp_roc
-    path "${rtg_dir}/snp_roc.tsv.gz", emit: snp_roc
-    path "${rtg_dir}/phasing.txt", emit: phasing
     path "${rtg_dir}/summary.txt", emit: summary
     path "${rtg_dir}/vcfeval.log", emit: vcfeval_log
-    path "${rtg_dir}/baseline.vcf.gz", emit: baseline_vcf
-    path "${rtg_dir}/baseline.vcf.gz.tbi", emit: baseline_vcf_index
-    path "${rtg_dir}/calls.vcf.gz", emit: calls_vcf
-    path "${rtg_dir}/calls.vcf.gz.tbi", emit: calls_vcf_index
+    path "${rtg_dir}/tp.vcf.gz", emit: tp_vcf
+    path "${rtg_dir}/tp-baseline.vcf.gz", emit: tp_baseline_vcf
+    path "${rtg_dir}/fp.vcf.gz", emit: fp_vcf
+    path "${rtg_dir}/fn.vcf.gz", emit: fn_vcf
+    path "${rtg_dir}/tp.vcf.gz.tbi", emit: tp_vcf_index
+    path "${rtg_dir}/tp-baseline.vcf.gz.tbi", emit: tp_baseline_vcf_index
+    path "${rtg_dir}/fp.vcf.gz.tbi", emit: fp_vcf_index
+    path "${rtg_dir}/fn.vcf.gz.tbi", emit: fn_vcf_index
+    path "${rtg_dir}/query.vcf.gz", emit: query_vcf
+    path "${rtg_dir}/query.vcf.gz.tbi", emit: query_index
+    path "${rtg_dir}/truth.vcf.gz", emit: truth_vcf
+    path "${rtg_dir}/truth.vcf.gz.tbi", emit: truth_index
 
     script:
     rtg_dir = "${sample_id}.${variant_type}"
@@ -36,10 +37,13 @@ output:
         --calls=${query_vcf} \
         --template=${reference_sdf} \
         --output=${rtg_dir} \
-        --output-mode=annotate
+        --output-mode=split
 
-    cp \
-        ${rtg_dir}/weighted_roc.tsv.gz \
+    cp ${rtg_dir}/weighted_roc.tsv.gz \
         ${rtg_dir}/${sample_id}_${variant_type}_${region_type}_weighted_roc.tsv.gz
+    cp ${query_vcf} ${rtg_dir}/query.vcf.gz
+    cp ${query_index} ${rtg_dir}/query.vcf.gz.tbi
+    cp ${truth_vcf} ${rtg_dir}/truth.vcf.gz
+    cp ${truth_index} ${rtg_dir}/truth.vcf.gz.tbi
     """
 }
