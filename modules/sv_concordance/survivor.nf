@@ -17,6 +17,6 @@ process SURVIVOR {
     script:
     """
     ls *.vcf > sample_files
-    SURVIVOR merge sample_files 100 2 1 1 0 30 ${ont_id}_${lp_id}_merged.vcf
+    SURVIVOR merge sample_files 500 2 1 1 0 30 ${ont_id}_${lp_id}_merged.vcf
     """
 }
