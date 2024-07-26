@@ -1,16 +1,18 @@
-#!/usr/bin/env nextflow
-
 process SURVIVOR {
     tag "${ont_id}|${lp_id}"
 
-    publishDir "${params.outdir}/sv/survivor/", mode: 'copy'
+    publishDir "${params.outdir}/sv/survivor/${ont_id}/", mode: 'copy'
 
     input:
     tuple val(ont_id), val(lp_id),
         path(ont_vcf), path(illumina_vcf)
 
     output:
-    tuple val(ont_id), val(lp_id), path("${ont_id}_${lp_id}_merged.vcf"), emit: merged_vcf
+    tuple val(ont_id), val(lp_id),
+        path("${ont_id}_${lp_id}_merged.vcf"),
+        path(ont_vcf),
+        path(illumina_vcf),
+        emit: sv_vcfs
 
     script:
     """
