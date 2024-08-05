@@ -2,6 +2,7 @@ backup/
 pod5/
 basecalled/
 vcf/
+qc/
 benchmark_data/
 references/
 references_old/
@@ -9,7 +10,6 @@ work/
 output/
 jobs/*/.nextflow*
 .nextflow*
-qc/*/
 seq_summaries/
 tmp*
 sample_ids.csv
