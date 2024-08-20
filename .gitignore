@@ -9,6 +9,7 @@ references_old/
 work/
 output/
 jobs/*/.nextflow*
+*/rna/
 .nextflow*
 seq_summaries/
 tmp*
