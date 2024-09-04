@@ -13,19 +13,31 @@
 module load anaconda3/2022.10-gcc-13.2.0
 source activate jupyter
 
-# get unused socket per https://unix.stackexchange.com/a/132524
+# Get unused remote socket
 readonly IPADDRESS=$(hostname -I | tr ' ' '\n' | grep '10.211.4.')
-readonly PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+readonly REMOTE_PORT=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+
+# Find an available local port
+LOCAL_PORT=$(python -c '
+import socket
+port = 8888
+while True:
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(("localhost", port))
+        s.close()
+        print(port)
+        break
+    except socket.error:
+        port += 1
+')
+
 cat 1>&2 <<END
-1. SSH tunnel from your workstation using the following command:
+1. Run the following SSH command on your local machine to create the tunnel:
 
-   Linux and MacOS:
-   ssh -NL 8888:${HOSTNAME}:${PORT} ${USER}@hpc.create.kcl.ac.uk
+   ssh -NL ${LOCAL_PORT}:${HOSTNAME}:${REMOTE_PORT} create
 
-   Windows:
-   ssh -m hmac-sha2-512 -NL 8888:${HOSTNAME}:${PORT} ${USER}@hpc.create.kcl.ac.uk
-
-   and point your web browser to http://localhost:8888/lab?token=<add the token from the jupyter output below>
+2. Point your web browser to http://localhost:${LOCAL_PORT}/lab?token=<add the token from the jupyter output below>
 
 When done using the notebook, terminate the job by
 issuing the following command on the login node:
@@ -34,6 +46,6 @@ issuing the following command on the login node:
 
 END
 
-jupyter-lab --port=${PORT} --ip=${IPADDRESS} --no-browser
+jupyter-lab --port=${REMOTE_PORT} --ip=${IPADDRESS} --no-browser
 
 printf 'notebook exited' 1>&2
