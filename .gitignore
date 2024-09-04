@@ -1,6 +1,7 @@
 backup/
 pod5/
 basecalled/
+transcriptomes/
 vcf/
 qc/
 benchmark_data/
@@ -14,5 +15,6 @@ jobs/*/.nextflow*
 seq_summaries/
 tmp*
 sample_ids.csv
+rna_barcodes.csv
 trace-*.txt
 *.code-workspace
