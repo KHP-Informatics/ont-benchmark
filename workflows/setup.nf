@@ -57,7 +57,7 @@ sample_ids_ch.flatMap { ont_id, lp_id ->
 
     // ONT
     //['snp', 'sv', 'str', 'cnv'].each { variant ->
-    ['snp', 'sv'].each { variant ->
+    ['snp', 'sv', 'str'].each { variant ->
         def ont_file = file("${params.ont_dir}/${ont_id}_${params.basecall}/${ont_id}_${params.basecall}.wf_${variant}.vcf.gz")
         if (ont_file.exists()) {
             files << tuple([id: ont_id, type: 'ont', variant: variant], ont_file)
