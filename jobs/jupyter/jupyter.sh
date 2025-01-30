@@ -6,11 +6,11 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
 #SBATCH --time=1-00:00:00
-#SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
-#SBATCH --chdir /scratch/prj/ppn_als_longread
+#SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.log
+#SBATCH --chdir /scratch/prj/ppn_als_longread/ont-benchmark
 #SBATCH --signal=USR2
 
-module load anaconda3/2022.10-gcc-13.2.0
+module load anaconda3
 source activate jupyter
 
 # Get unused remote socket
