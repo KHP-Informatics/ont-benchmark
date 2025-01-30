@@ -6,10 +6,10 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=512M
 #SBATCH --time=0-06:00:00
-#SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
+#SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.log
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
-#SBATCH --chdir /scratch/prj/ppn_als_longread/jobs/qc
+#SBATCH --chdir /scratch/prj/ppn_als_longread/ont-benchmark/jobs/qc
 
 export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 
@@ -20,12 +20,12 @@ pickle_names_hac=()
 pickle_files_sup=()
 pickle_names_sup=()
 
-for cram_file in /scratch/prj/ppn_als_longread/vcf/*/*.haplotagged.cram; do
+for cram_file in /scratch/prj/ppn_als_longread/ont-benchmark/vcf/*/*.haplotagged.cram; do
     if [ -f "${cram_file}" ]; then
         subdir_name=$(basename "$(dirname "${cram_file}")")
         subdir_name=${subdir_name%.haplotagged}
 
-        outdir="/scratch/prj/ppn_als_longread/qc/nanoplot/aligned_bams/${subdir_name}"
+        outdir="/scratch/prj/ppn_als_longread/ont-benchmark/qc/nanoplot/aligned_bams/${subdir_name}"
 
         pickle_file="${outdir}/NanoPlot-data.pickle"
 
@@ -65,7 +65,7 @@ done
 
 wait
 
-nanocomp_outdir="/scratch/prj/ppn_als_longread/qc/nanocomp/aligned_bams/"
+nanocomp_outdir="/scratch/prj/ppn_als_longread/ont-benchmark/qc/nanocomp/aligned_bams/"
 
 # Function to join array elements with a space
 join_by_space() { local IFS=' '; echo "$*"; }
@@ -80,7 +80,7 @@ run_nanocomp() {
     local pickle_files_str=$(join_by_space "${pickle_files_arr[@]}")
     local pickle_names_str=$(join_by_space "${pickle_names_arr[@]}")
 
-    local outdir="/scratch/prj/ppn_als_longread/qc/nanocomp/aligned_bams${outdir_suffix}"
+    local outdir="/scratch/prj/ppn_als_longread/ont-benchmark/qc/nanocomp/aligned_bams${outdir_suffix}"
 
     echo "pickle_files_arr: ${pickle_files_arr[@]}"
     echo "pickle_files_str: ${pickle_files_str}"

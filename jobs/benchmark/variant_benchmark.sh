@@ -6,12 +6,12 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
 #SBATCH --time=2-00:00:00
-#SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
+#SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.log
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
 #SBATCH --chdir /scratch/prj/ppn_als_longread/
 
-module load nextflow/23.10.0-gcc-13.2.0
+module load nextflow/24.10.2-gcc-13.2.0
 
 export NXF_HOME=/scratch/users/${USER}/nextflow/
 export NXF_CACHE=/scratch/users/${USER}/nextflow/cache

@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=8G
 #SBATCH --time=0-01:00:00
-#SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.out
+#SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.log
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
 #SBATCH --chdir /scratch/prj/ppn_als_longread/jobs/qc
