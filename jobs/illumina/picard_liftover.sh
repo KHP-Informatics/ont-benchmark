@@ -19,7 +19,7 @@
 #SBATCH --chdir /scratch/prj/ppn_als_longread/ont-benchmark/jobs/illumina
 
 # Constants
-readonly BASE_DIR="/scratch/prj/ppn_als_longread"
+readonly BASE_DIR="/scratch/prj/ppn_als_longread/ont-benchmark"
 readonly REFERENCE="${BASE_DIR}/references/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
 readonly REFERENCE_DICT="${REFERENCE%.fna}.dict"
 readonly INPUT_DIR="${BASE_DIR}/benchmark_data/illumina/grch37"
@@ -33,19 +33,17 @@ readonly PICARD_IMAGE="docker://broadinstitute/picard:3.1.1"
 # Environment setup
 export SINGULARITY_CACHEDIR="/scratch/users/${USER}/singularity/"
 
-
 # Function to create sequence dictionary
 create_sequence_dictionary() {
     if [[ ! -f "${REFERENCE_DICT}" ]]; then
         echo "Dictionary file not found. Creating dictionary file..."
-        singularity exec --contain --bind /scratch "${PICARD_IMAGE}" \
+        singularity exec --contain --bind "${BASE_DIR}" "${PICARD_IMAGE}" \
             java -jar /usr/picard/picard.jar CreateSequenceDictionary \
             -REFERENCE "${REFERENCE}" \
             -OUTPUT "${REFERENCE_DICT}" \
             -TMP_DIR "${TMP_DIR}"
     fi
 }
-
 
 # Function to process a VCF file
 liftover_vcf() {
@@ -56,7 +54,7 @@ liftover_vcf() {
 
     echo "Processing ${input_vcf} and logging to ${log_file}"
 
-    srun -n1 -N1 singularity exec --contain --bind /scratch "${PICARD_IMAGE}" \
+    srun -n1 -N1 singularity exec --contain --bind "${BASE_DIR}" "${PICARD_IMAGE}" \
         java -jar /usr/picard/picard.jar LiftoverVcf \
         -INPUT "${input_vcf}" \
         -OUTPUT "${output_vcf}" \
@@ -68,7 +66,6 @@ liftover_vcf() {
         -RECOVER_SWAPPED_REF_ALT true &> "${log_file}"
 }
 
-
 # Function to create required directories
 create_directories() {
     mkdir -p "${OUTPUT_DIR}"
@@ -77,19 +74,14 @@ create_directories() {
     mkdir -p "${TMP_DIR}"
 }
 
-
 main() {
     create_directories
 
     create_sequence_dictionary
 
-    # Export variables needed by parallel processes
-    export OUTPUT_DIR REJECT_DIR REFERENCE CHAIN TMP_DIR LOG_DIR
-    export -f liftover_vcf
-
-    # Process all VCF files in parallel
-    find "${INPUT_DIR}" -name 'LP*-DNA_*.vcf.gz' | \
-        xargs -I{} -P 0 srun -n1 -N1 bash -c "liftover_vcf {}"
+    for vcf_file in "${INPUT_DIR}"/LP*-DNA_*.vcf.gz; do
+        liftover_vcf "${vcf_file}" &
+    done
 
     wait
 }
