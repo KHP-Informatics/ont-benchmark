@@ -16,7 +16,7 @@
 #SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.log
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
-#SBATCH --chdir /scratch/prj/ppn_als_longread/jobs/qc
+#SBATCH --chdir /scratch/prj/ppn_als_longread/ont-benchmark/jobs/illumina
 
 # Constants
 readonly BASE_DIR="/scratch/prj/ppn_als_longread"
