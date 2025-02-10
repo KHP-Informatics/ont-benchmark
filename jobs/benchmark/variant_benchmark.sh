@@ -5,11 +5,11 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
-#SBATCH --time=2-00:00:00
+#SBATCH --time=1-00:00:00
 #SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.log
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
-#SBATCH --chdir /scratch/prj/ppn_als_longread/
+#SBATCH --chdir /scratch/prj/ppn_als_longread/ont-benchmark
 
 module load nextflow/24.10.2-gcc-13.2.0
 
