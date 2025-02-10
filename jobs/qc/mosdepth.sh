@@ -9,7 +9,7 @@
 
 #SBATCH --job-name=mosdepth
 #SBATCH --partition=nd_bioinformatics_cpu,cpu,interruptible_cpu
-#SBATCH --ntasks=28
+#SBATCH --ntasks=14
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=1G
 #SBATCH --time=0-00:10:00
@@ -44,8 +44,23 @@ run_mosdepth() {
             --threads 4 \
             --fasta ${REFERENCE} \
             --fast-mode \
-            $(basename ${prefix}) \
-            ${input_cram}" &
+            ${prefix} \
+            ${input_cram}" & }
+
+
+process_cram_files() {
+    for input_cram in "${INPUT_DIR}"/*/*.haplotagged.cram; do
+        if [[ -f "${input_cram}" ]]; then
+            cram_subdir=$(basename "$(dirname "${input_cram}")")
+            output_dir="${OUTPUT_BASE_DIR}/${cram_subdir}"
+            prefix="${output_dir}/$(basename "${input_cram}" .haplotagged.cram)"
+
+            # Ensure output directory exists
+            mkdir -p "${output_dir}"
+
+            run_mosdepth "${input_cram}" "${output_dir}" "${prefix}"
+        fi
+    done
 }
 
 
@@ -54,23 +69,9 @@ main() {
     if [[ ! -d "${INPUT_DIR}" ]]; then
         echo "Error: Input directory ${INPUT_DIR} does not exist"
         exit 1
-    }
+    fi
 
-    # Process each CRAM file
-    for input_cram in "${INPUT_DIR}"/*/*.haplotagged.cram; do
-        if [[ -f "${input_cram}" ]]; then
-            local cram_subdir
-            cram_subdir=$(basename "$(dirname "${input_cram}")")
-            local output_dir="${OUTPUT_BASE_DIR}/${cram_subdir}"
-            local prefix="${output_dir}/$(basename "${input_cram}" .haplotagged.cram)"
-
-            # Create output directory
-            mkdir -p "${output_dir}"
-
-            run_mosdepth "${input_cram}" "${output_dir}" "${prefix}"
-        fi
-    done
-
+    process_cram_files
     wait
 }
 
