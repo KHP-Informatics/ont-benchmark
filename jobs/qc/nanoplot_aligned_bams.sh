@@ -10,9 +10,9 @@
 
 #SBATCH --job-name=nanoplot_aligned_bams
 #SBATCH --partition=nd_bioinformatics_cpu,cpu,interruptible_cpu
-#SBATCH --ntasks=8
+#SBATCH --ntasks=14
 #SBATCH --cpus-per-task=8
-#SBATCH --mem-per-cpu=512M
+#SBATCH --mem-per-cpu=2G
 #SBATCH --time=0-06:00:00
 #SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.log
 #SBATCH --mail-type=ALL
@@ -21,6 +21,7 @@
 
 # Constants
 readonly BASE_DIR="/scratch/prj/ppn_als_longread/ont-benchmark"
+readonly BASE_WORK_DIR="/scratch_tmp/prj/ppn_als_longread/work"
 readonly CRAM_DIR="${BASE_DIR}/vcf"
 readonly NANOPLOT_OUTPUT_DIR="${BASE_DIR}/qc/nanoplot/aligned_bams"
 readonly NANOCOMP_OUTPUT_DIR="${BASE_DIR}/qc/nanocomp/aligned_bams"
@@ -29,7 +30,8 @@ readonly NANOCOMP_IMAGE="docker://quay.io/biocontainers/nanocomp:1.23.1--pyhdfd7
 
 # Environment setup
 export SINGULARITY_CACHEDIR="/scratch/users/${USER}/singularity/"
-
+export REF_CACHE="/scratch/prj/ppn_als_longread/ont-benchmark/references/samtools_cache"
+export REF_PATH="/scratch/prj/ppn_als_longread/ont-benchmark/references/"
 
 # Function to join array elements with a space
 join_by_space() {
@@ -54,7 +56,7 @@ run_nanoplot() {
         input_cmd="--cram ${cram_file}"
     fi
 
-    srun -n1 -N1 singularity exec --contain --bind "${BASE_DIR}" \
+    srun -n1 -N1 singularity exec --contain --bind "${BASE_DIR},${BASE_WORK_DIR}" \
         "${NANOPLOT_IMAGE}" \
         NanoPlot \
             ${input_cmd} \
@@ -88,7 +90,7 @@ run_nanocomp() {
         echo "Files: ${pickle_files_str}"
         echo "Names: ${pickle_names_str}"
 
-        srun -n1 -N1 singularity exec --contain --bind "${BASE_DIR}" \
+        srun -n1 -N1 singularity exec --contain --bind "${BASE_DIR},${BASE_WORK_DIR}" \
             "${NANOCOMP_IMAGE}" \
             NanoComp \
                 --pickle ${pickle_files_str} \
