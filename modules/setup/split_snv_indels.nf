@@ -12,16 +12,10 @@ process SPLIT_SNV_INDELS {
 
     script:
     """
-    bcftools index --threads ${task.cpus} ${vcf}
-
-    bcftools view \
-        --threads ${task.cpus} \
-        --regions '^chr[1-9,X,Y]\\|^chr[1,2][0-9]\\|^[1-9]\\|^[1,2][0-9]\\|^[X,Y]' \
-        ${vcf} | \
     bcftools norm \
         --threads ${task.cpus} \
         --fasta-ref ${reference_fasta} \
-        -m-any -Ou | \
+        -m-any --do-not-normalize -Ou ${vcf} | \
     tee >(bcftools view --threads ${task.cpus} --types snps,mnps -Ou | \
           bcftools norm --threads ${task.cpus} --atomize -Oz -o ${meta.id}.snv.vcf.gz) | \
     bcftools view --threads ${task.cpus} --types indels -Oz -o ${meta.id}.indel.vcf.gz

@@ -1,15 +1,19 @@
 #!/usr/bin/env nextflow
 
 process RTG_VCFEVAL {
-    tag "${sample_id}|${file_type}|${region_type}"
+    tag "${sample_id}|${file_type}|${region_type}${size != 'aggregate' ? '|' + size + 'bp' : ''}"
 
-    publishDir "${params.outdir}/${variant_type}/rtg_vcfeval/${region_type}", mode: 'copy'
+    publishDir {
+        def base_path = "${params.outdir}/${variant_type}/rtg_vcfeval/${region_type}"
+        size != 'aggregate' ? "${base_path}/${size}bp" : "${base_path}/aggregate"
+    }, mode: 'copy'
 
     input:
     tuple val(sample_id), val(other_id),
           path(query_vcf), path(query_index),
           path(truth_vcf), path(truth_index),
-          val(file_type), val(region_type), path(reference_sdf)
+          val(file_type), val(region_type), val(size),
+          path(reference_sdf)
     val(variant_type)
 
     output:
