@@ -20,4 +20,9 @@ export NXF_SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 export NXF_JVM_ARGS="-XX:InitialRAMPercentage=25 -XX:MaxRAMPercentage=75"
 
+# See https://github.com/nextflow-io/nextflow/issues/2695#issuecomment-1635939435
+nohup lsof +D /scratch_tmp/prj/ppn_als_longread/work -r 600 &> /dev/null &
+LSOF_PID=$!
+trap "kill $LSOF_PID" EXIT
+
 nextflow run main.nf
