@@ -111,7 +111,9 @@ Channel
 
 workflow SETUP {
     main:
-    snv_indel_files = illumina_snv_indel_ch.mix(ont_snv_indel_ch)
+    snv_indel_files = illumina_snv_indel_ch
+        .mix(ont_snv_indel_ch)
+        .combine(reference_fasta_ch)
 
     SPLIT_SNV_INDELS(snv_indel_files)
 
