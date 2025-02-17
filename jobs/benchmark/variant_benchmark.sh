@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
-#SBATCH --time=1-00:00:00
+#SBATCH --time=0-04:00:00
 #SBATCH --output=/scratch/users/%u/slurm_jobs/%j_%x.log
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
@@ -21,7 +21,7 @@ export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 export NXF_JVM_ARGS="-XX:InitialRAMPercentage=25 -XX:MaxRAMPercentage=75"
 
 # See https://github.com/nextflow-io/nextflow/issues/2695#issuecomment-1635939435
-nohup lsof +D /scratch_tmp/prj/ppn_als_longread/work -r 600 &> /dev/null &
+nohup lsof +D /scratch/prj/ppn_als_longread/ont-benchmark/work -r 600 &> /dev/null &
 LSOF_PID=$!
 trap "kill $LSOF_PID" EXIT
 
