@@ -25,4 +25,4 @@ nohup lsof +D /scratch/prj/ppn_als_longread/ont-benchmark/work -r 600 &> /dev/nu
 LSOF_PID=$!
 trap "kill $LSOF_PID" EXIT
 
-nextflow run main.nf
+nextflow renatosantos98/ont-benchmark
