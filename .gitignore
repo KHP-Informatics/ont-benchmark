@@ -5,8 +5,7 @@ transcriptomes/
 vcf/
 qc/
 benchmark_data/
-references/
-references_old/
+references/GCA_000001405.15_GRCh38*
 work/
 output/
 jobs/*/.nextflow*
