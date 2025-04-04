@@ -11,18 +11,19 @@
 #SBATCH --mail-user=renato.santos@kcl.ac.uk
 #SBATCH --chdir /scratch/prj/ppn_als_longread/ont-benchmark
 
-module load nextflow/24.10.2-gcc-13.2.0
-
 export NXF_HOME=/scratch/users/${USER}/nextflow/
 export NXF_CACHE=/scratch/users/${USER}/nextflow/cache
 export NXF_TEMP=/scratch/users/${USER}/nextflow/tmp
 export NXF_SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 export SINGULARITY_CACHEDIR=/scratch/users/${USER}/singularity/
 export NXF_JVM_ARGS="-XX:InitialRAMPercentage=25 -XX:MaxRAMPercentage=75"
+export NXF_WORK=/scratch_tmp/prj/ppn_als_longread/work
+
+module load nextflow/24.10.2-gcc-13.2.0
 
 # See https://github.com/nextflow-io/nextflow/issues/2695#issuecomment-1635939435
-nohup lsof +D /scratch/prj/ppn_als_longread/ont-benchmark/work -r 600 &> /dev/null &
+nohup lsof +D ${NXF_WORK} -r 600 &> /dev/null &
 LSOF_PID=$!
 trap "kill $LSOF_PID" EXIT
 
-nextflow renatosantos98/ont-benchmark
+nextflow run main.nf

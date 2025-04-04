@@ -8,7 +8,8 @@ process FILTER_SNV_VCF {
         path(ont_vcf), path(ont_index),
         path(illumina_vcf), path(illumina_index),
         path(array_vcf), path(array_index),
-        path(high_confidence_regions)
+        path(low_complexity_regions),
+        path(dark_genome_regions)
 
     output:
     tuple val(ont_id), val(lp_id),
@@ -17,7 +18,10 @@ process FILTER_SNV_VCF {
         path("${lp_id}.array.snv.hc.filtered.vcf.gz"), path("${lp_id}.array.snv.hc.filtered.vcf.gz.tbi"),
         path("${ont_id}.ont.snv.lc.filtered.vcf.gz"), path("${ont_id}.ont.snv.lc.filtered.vcf.gz.tbi"),
         path("${lp_id}.illumina.snv.lc.filtered.vcf.gz"), path("${lp_id}.illumina.snv.lc.filtered.vcf.gz.tbi"),
-        path("${lp_id}.array.snv.lc.filtered.vcf.gz"), path("${lp_id}.array.snv.lc.filtered.vcf.gz.tbi")
+        path("${lp_id}.array.snv.lc.filtered.vcf.gz"), path("${lp_id}.array.snv.lc.filtered.vcf.gz.tbi"),
+        path("${ont_id}.ont.snv.dark.filtered.vcf.gz"), path("${ont_id}.ont.snv.dark.filtered.vcf.gz.tbi"),
+        path("${lp_id}.illumina.snv.dark.filtered.vcf.gz"), path("${lp_id}.illumina.snv.dark.filtered.vcf.gz.tbi"),
+        path("${lp_id}.array.snv.dark.filtered.vcf.gz"), path("${lp_id}.array.snv.dark.filtered.vcf.gz.tbi")
 
     script:
     """
@@ -26,27 +30,29 @@ process FILTER_SNV_VCF {
     echo "ONT VCF: \$(bcftools stats ${ont_vcf} | grep 'number of records:' | cut -f4)"
     echo "Illumina VCF: \$(bcftools stats ${illumina_vcf} | grep 'number of records:' | cut -f4)"
 
-    bcftools view -Ou -T ${high_confidence_regions} ${array_vcf} | \
+    # High Complexity: Not in low complexity regions
+    bcftools view -Ou -T ^${low_complexity_regions} ${array_vcf} | \
     bcftools view -Oz -o ${lp_id}.array.snv.hc.filtered.vcf.gz
     bcftools index -t ${lp_id}.array.snv.hc.filtered.vcf.gz
     echo "Array VCF after HC filtering: \$(bcftools stats ${lp_id}.array.snv.hc.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
 
-    bcftools query -f '%CHROM\t%POS\n' ${lp_id}.array.snv.hc.filtered.vcf.gz > array_positions.tsv
-    echo "Number of HC positions extracted: \$(wc -l < array_positions.tsv)"
+    bcftools query -f '%CHROM\t%POS\n' ${lp_id}.array.snv.hc.filtered.vcf.gz > array_positions_hc.tsv
+    echo "Number of HC positions extracted: \$(wc -l < array_positions_hc.tsv)"
 
-    bcftools view -Ou -T ${high_confidence_regions} ${ont_vcf} | \
-    bcftools view -Ou -T array_positions.tsv | \
+    bcftools view -Ou -T ^${low_complexity_regions} ${ont_vcf} | \
+    bcftools view -Ou -T array_positions_hc.tsv | \
     bcftools view -Oz -o ${ont_id}.ont.snv.hc.filtered.vcf.gz
     bcftools index -t ${ont_id}.ont.snv.hc.filtered.vcf.gz
     echo "ONT VCF after HC filtering: \$(bcftools stats ${ont_id}.ont.snv.hc.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
 
-    bcftools view -Ou -T ${high_confidence_regions} ${illumina_vcf} | \
-    bcftools view -Ou -T array_positions.tsv | \
+    bcftools view -Ou -T ^${low_complexity_regions} ${illumina_vcf} | \
+    bcftools view -Ou -T array_positions_hc.tsv | \
     bcftools view -Oz -o ${lp_id}.illumina.snv.hc.filtered.vcf.gz
     bcftools index -t ${lp_id}.illumina.snv.hc.filtered.vcf.gz
     echo "Illumina VCF after HC filtering: \$(bcftools stats ${lp_id}.illumina.snv.hc.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
 
-    bcftools view -Ou -T ^${high_confidence_regions} ${array_vcf} | \
+    # Low Complexity: In low complexity regions
+    bcftools view -Ou -T ${low_complexity_regions} ${array_vcf} | \
     bcftools view -Oz -o ${lp_id}.array.snv.lc.filtered.vcf.gz
     bcftools index -t ${lp_id}.array.snv.lc.filtered.vcf.gz
     echo "Array VCF after LC filtering: \$(bcftools stats ${lp_id}.array.snv.lc.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
@@ -54,16 +60,37 @@ process FILTER_SNV_VCF {
     bcftools query -f '%CHROM\t%POS\n' ${lp_id}.array.snv.lc.filtered.vcf.gz > array_positions_lc.tsv
     echo "Number of LC positions extracted: \$(wc -l < array_positions_lc.tsv)"
 
-    bcftools view -Ou -T ^${high_confidence_regions} ${ont_vcf} | \
+    bcftools view -Ou -T ${low_complexity_regions} ${ont_vcf} | \
     bcftools view -Ou -T array_positions_lc.tsv | \
     bcftools view -Oz -o ${ont_id}.ont.snv.lc.filtered.vcf.gz
     bcftools index -t ${ont_id}.ont.snv.lc.filtered.vcf.gz
     echo "ONT VCF after LC filtering: \$(bcftools stats ${ont_id}.ont.snv.lc.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
 
-    bcftools view -Ou -T ^${high_confidence_regions} ${illumina_vcf} | \
+    bcftools view -Ou -T ${low_complexity_regions} ${illumina_vcf} | \
     bcftools view -Ou -T array_positions_lc.tsv | \
     bcftools view -Oz -o ${lp_id}.illumina.snv.lc.filtered.vcf.gz
     bcftools index -t ${lp_id}.illumina.snv.lc.filtered.vcf.gz
     echo "Illumina VCF after LC filtering: \$(bcftools stats ${lp_id}.illumina.snv.lc.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
+
+    # Dark Genome: In dark genome regions
+    bcftools view -Ou -T ${dark_genome_regions} ${array_vcf} | \
+    bcftools view -Oz -o ${lp_id}.array.snv.dark.filtered.vcf.gz
+    bcftools index -t ${lp_id}.array.snv.dark.filtered.vcf.gz
+    echo "Array VCF after dark genome filtering: \$(bcftools stats ${lp_id}.array.snv.dark.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
+
+    bcftools query -f '%CHROM\t%POS\n' ${lp_id}.array.snv.dark.filtered.vcf.gz > array_positions_dark.tsv
+    echo "Number of dark genome positions extracted: \$(wc -l < array_positions_dark.tsv)"
+
+    bcftools view -Ou -T ${dark_genome_regions} ${ont_vcf} | \
+    bcftools view -Ou -T array_positions_dark.tsv | \
+    bcftools view -Oz -o ${ont_id}.ont.snv.dark.filtered.vcf.gz
+    bcftools index -t ${ont_id}.ont.snv.dark.filtered.vcf.gz
+    echo "ONT VCF after dark genome filtering: \$(bcftools stats ${ont_id}.ont.snv.dark.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
+
+    bcftools view -Ou -T ${dark_genome_regions} ${illumina_vcf} | \
+    bcftools view -Ou -T array_positions_dark.tsv | \
+    bcftools view -Oz -o ${lp_id}.illumina.snv.dark.filtered.vcf.gz
+    bcftools index -t ${lp_id}.illumina.snv.dark.filtered.vcf.gz
+    echo "Illumina VCF after dark genome filtering: \$(bcftools stats ${lp_id}.illumina.snv.dark.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
     """
 }
