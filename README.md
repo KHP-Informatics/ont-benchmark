@@ -29,6 +29,8 @@ Sequencing depth strongly influenced variant calling performance across all vari
 │ ├── shared/ # Shared utility modules
 │ ├── snv_benchmark/ # SNV analysis modules
 │ └── sv_consensus/ # Structural variant consensus modules
+├── references/ # Genome and positional reference files
+├── workflows/ # Nextflow sub-workflows
 ├── main.nf # Main Nextflow workflow
 ├── nextflow.config # Nextflow configuration
 └── ont-benchmark.ipynb # Jupyter notebook with statistical analyses
@@ -56,6 +58,27 @@ The analysis pipeline expects:
 1. Oxford Nanopore sequencing data (processed through basecalling)
 1. Illumina short-read sequencing data (aligned and variant-called)
 1. Illumina microarray genotyping data
+
+### NCBI API Key Setup
+
+To ensure the pipeline functions correctly and to optimize access to NCBI resources, please set the following Nextflow secrets before running the workflow:
+
+```bash
+nextflow secrets set NCBI_API_KEY <your_ncbi_api_key>
+nextflow secrets set NCBI_EMAIL <your_ncbi_email>
+```
+
+These secrets are necessary for accessing NCBI resources during the analysis. By default, the NCBI Datasets API and command-line tool requests are rate-limited to 5 requests per second (rps). Using an API key increases this limit to 10 rps.
+
+For more information on obtaining and using NCBI API keys, please refer to the [NCBI Datasets API Keys Documentation](https://www.ncbi.nlm.nih.gov/datasets/docs/v2/api/api-keys/).
+
+You can verify that the secrets have been set correctly by listing them:
+
+```bash
+nextflow secrets list
+```
+
+For more information on managing secrets in Nextflow, refer to the [Nextflow Secrets documentation](https://www.nextflow.io/docs/stable/secrets.html).
 
 ## Usage
 
