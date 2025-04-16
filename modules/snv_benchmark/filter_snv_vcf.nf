@@ -78,17 +78,12 @@ process FILTER_SNV_VCF {
     bcftools index -t ${lp_id}.array.snv.dark.filtered.vcf.gz
     echo "Array VCF after dark genome filtering: \$(bcftools stats ${lp_id}.array.snv.dark.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
 
-    bcftools query -f '%CHROM\t%POS\n' ${lp_id}.array.snv.dark.filtered.vcf.gz > array_positions_dark.tsv
-    echo "Number of dark genome positions extracted: \$(wc -l < array_positions_dark.tsv)"
-
     bcftools view -Ou -T ${dark_genome_regions} ${ont_vcf} | \
-    bcftools view -Ou -T array_positions_dark.tsv | \
     bcftools view -Oz -o ${ont_id}.ont.snv.dark.filtered.vcf.gz
     bcftools index -t ${ont_id}.ont.snv.dark.filtered.vcf.gz
     echo "ONT VCF after dark genome filtering: \$(bcftools stats ${ont_id}.ont.snv.dark.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
 
     bcftools view -Ou -T ${dark_genome_regions} ${illumina_vcf} | \
-    bcftools view -Ou -T array_positions_dark.tsv | \
     bcftools view -Oz -o ${lp_id}.illumina.snv.dark.filtered.vcf.gz
     bcftools index -t ${lp_id}.illumina.snv.dark.filtered.vcf.gz
     echo "Illumina VCF after dark genome filtering: \$(bcftools stats ${lp_id}.illumina.snv.dark.filtered.vcf.gz | grep 'number of records:' | cut -f4)"
