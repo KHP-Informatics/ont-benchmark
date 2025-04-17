@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH --job-name=ont_benchmark
-#SBATCH --partition=nd_bioinformatics_cpu,cpu
+#SBATCH --partition=nd_bioinformatics_cpu,drive_cdt_gpu,cpu
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
