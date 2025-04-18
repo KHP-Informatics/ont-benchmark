@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH --job-name=ops-jupyter
-#SBATCH --partition=nd_bioinformatics_cpu,cpu
+#SBATCH --partition=nd_bioinformatics_cpu,drive_cdt_gpu,cpu
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
