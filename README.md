@@ -106,4 +106,4 @@ This project is licensed under the MIT License. You can freely use and modify th
 # Citation
 
 If you use this benchmark in your research, please cite:
-[Santos R, Lee H, Williams A, Baffour-Kyei A, Breen G, Iacoangeli A. Investigating the performance of Oxford Nanopore long-read sequencing with respect to Illumina microarrays and short-read sequencing. bioRxiv. 2024 Dec 22:2024-12.](https://doi.org/10.1101/2024.12.19.629409)
+[Santos, R., Lee, H., Williams, A., Baffour-Kyei, A., Lee, S.-H., Troakes, C., Al-Chalabi, A., Breen, G., & Iacoangeli, A. (2025). Investigating the Performance of Oxford Nanopore Long-Read Sequencing with Respect to Illumina Microarrays and Short-Read Sequencing. *International Journal of Molecular Sciences*, 26(10), 4492. https://doi.org/10.3390/ijms26104492](https://doi.org/10.3390/ijms26104492)
