@@ -81,7 +81,7 @@ For more information on managing secrets in Nextflow, refer to the [Nextflow Sec
 ### Running the Complete Workflow
 
 ```bash
-nextflow run renatosantos98/ont-benchmark
+nextflow run KHP-Informatics/ont-benchmark
 ```
 
 or
